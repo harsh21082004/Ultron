@@ -22,7 +22,7 @@ import { DrawerService } from './core/services/drawer.service';
     SidebarComponent,
   ],
   template: `
-    <div class="relative flex h-screen w-screen">
+    <div class="relative flex h-[100%] w-[100%]">
   @if (!isLoginOrSignupPage()) {
     <app-sidebar-component></app-sidebar-component>
   }

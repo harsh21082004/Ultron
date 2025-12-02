@@ -132,7 +132,7 @@
 
     <form [formGroup]="chatForm" (ngSubmit)="sendMessage()" class="chat-input-content rounded-2xl p-2 mt-4 sm:p-3">
       <textarea #chatTextarea formControlName="message" rows="1" placeholder="Message AI Chat..."
-        class="w-full textarea bg-transparent resize-none py-2 px-3 sm:px-4 placeholder-gray-500 focus:outline-none"
+        class="w-full textarea bg-transparent resize-none px-3 sm:px-4 placeholder-gray-500 focus:outline-none"
         (keydown)="handleEnterPress($event)" appAutoGrow [appAutoGrowMaxLines]="4"></textarea>
 
       <div class="flex items-center justify-between mt-2">
