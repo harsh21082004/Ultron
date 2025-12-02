@@ -1,0 +1,109 @@
+@use '@angular/material' as mat;
+@use "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap');
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  @include mat.theme((color: (primary: mat.$azure-palette,
+        tertiary: mat.$red-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    ));
+
+}
+
+$light-theme: mat.define-theme((color: (theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+    ));
+
+$dark-theme: mat.define-theme((color: (theme-type: dark,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+    ));
+@include mat.all-component-themes($light-theme);
+
+html.dark {
+  $dark-component-background: #162731;
+  $light-text-color: #c4c7c5;
+
+  --mat-menu-container-color: #{$dark-component-background} !important;
+
+  --mat-sys-on-surface: #{$light-text-color};
+
+  --mat-sys-color-on-surface: #c4c7c5 !important;
+
+  --mat-icon-button-icon-color: #c4c7c5 !important;
+
+  --mat-button-text-label-text-color: #c4c7c5 !important;
+
+  // Apply the dark theme for all components
+  @include mat.all-component-themes($dark-theme);
+  // This is your page background, which is separate
+  background: linear-gradient(135deg, rgb(9, 31, 44) 20%, rgba(22, 26, 32, 1) 70%);
+}
+
+html{
+  
+  $light-component-background: #f0f4f9;
+
+  $light-text-color: #1b1c1d;
+
+  --mat-menu-container-color: #{$light-component-background};
+
+  --mat-icon-button-icon-color: #1b1c1d;
+
+  --mat-sys-on-surface: #{$light-text-color};
+
+  --gem-sys-color--on-surface: #1b1c1d;
+
+  --mat-button-text-label-text-color: #1b1c1d;
+
+}
+
+body {
+  // Default the application to a light color theme. This can be changed to
+  // `dark` to enable the dark color theme, or to `light dark` to defer to the
+  // user's system settings.
+  color-scheme: light dark;
+
+  // Set a default background, font and text colors for the application using
+  // Angular Material's system-level CSS variables. Learn more about these
+  // variables at https://material.angular.dev/guide/system-variables
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  
+
+  // Reset the user agent margin.
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Alan Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+body {
+  margin: 0;
+}
+
+.blur-backdrop{
+  backdrop-filter: blur(1px);
+  background-color: rgba(0, 0, 0, 0.336);
+}

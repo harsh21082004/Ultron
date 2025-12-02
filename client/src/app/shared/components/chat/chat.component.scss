@@ -1,0 +1,77 @@
+@use '@angular/material' as mat;
+
+
+
+.chat {
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+}
+
+.chat-container::-webkit-scrollbar {
+  display: none;
+}
+
+.ai-response {
+  left: 10px;
+  top: 10px;
+}
+
+.user-bubble{
+  background-color: var(--mat-menu-container-color);
+  border-bottom-left-radius: 20px;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+
+}
+
+.chat-input-content {
+  background-color: var(--mat-menu-container-color);
+  box-shadow: 0 0 5px grey;
+  height: 100px;
+  min-height: 100px; /* MODIFIED: Was height: 100px */
+  height: auto;       /* Allow form to grow */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; 
+  box-sizing: border-box;
+}
+
+/* These are the new styles for the auto-growing textarea.
+*/
+.auto-grow-textarea {
+  line-height: 1.5;   /* Set a consistent line-height for calculations */
+  overflow-y: hidden; /* Hide scrollbar initially */
+  height: auto;       /* Start at auto height */
+  /* Set an initial height that matches one line of text + padding.
+    Your textarea has py-2 (0.5rem * 2 = 1rem) + line-height (1.5rem)
+    A px value is more reliable. Let's start with ~48px.
+  */
+  min-height: 48px; 
+}
+
+.textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.textarea{
+  font-size: 16px;
+}
+
+
+// .gradient-spinner {
+//   // Create a linear gradient as a background for the SVG stroke
+//   @include mat.progress-spinner-overrides((
+//     active-indicator-color: linear-gradient(135deg,rgba(189, 224, 255, 1) 20%, rgba(143, 152, 255, 1) 70%),
+//   ));
+// }
+
+:host ::ng-deep .mat-mdc-progress-spinner .mdc-circular-progress__determinate-circle,
+:host ::ng-deep .mat-mdc-progress-spinner .mdc-circular-progress__indeterminate-circle-graphic {
+  stroke: url(#spinnerGradient) !important;
+}
+
+#spinnerGradient {
+  background: #bd0058;
+  background: linear-gradient(90deg, rgba(189, 0, 88, 1) 0%, rgba(250, 100, 157, 1) 30%, rgba(213, 217, 129, 1) 50%, rgba(134, 237, 83, 1) 100%);
+}
+

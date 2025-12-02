@@ -1,0 +1,93 @@
+--- Global / OS / IDE ---
+
+.DS_Store
+.Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+--- Vercel ---
+
+.vercel
+.vercel_build_output
+
+--- Node.js (Covers client & server) ---
+
+**/node_modules/
+**/npm-debug.log
+**/yarn-error.log
+**/pnpm-debug.log
+**/.pnp
+**/.pnp.js
+
+--- Environment Variables (CRITICAL) ---
+
+Ignores .env files in ANY folder
+
+**/.env
+**/.env.production
+**/.env.development
+**/.env.local
+**/.env.test
+
+--- Angular (Client) ---
+
+Output paths
+
+/client/dist/
+/client/tmp/
+/client/out-tsc/
+
+Generated files
+
+/client/.angular/
+/client/bazel-out/
+
+Testing
+
+/client/coverage/
+
+--- Python (FastAPI Backend) ---
+
+Byte-compiled / optimized / DLL files
+
+pycache/
+*.py[cod]
+*$py.class
+
+Virtual Environments
+
+venv/
+env/
+.venv/
+/fastapi-backend/venv/
+/fastapi-backend/env/
+
+Distribution / Packaging
+
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+Pytest
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+LangChain / Groq specific (if any local cache)
+
+.langchain_cache/

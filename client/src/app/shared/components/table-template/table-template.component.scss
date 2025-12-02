@@ -1,0 +1,35 @@
+.table-section {
+  margin-bottom: 2rem;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 800px;
+}
+
+th, td {
+  white-space: nowrap;
+  padding: 8px 16px;
+}
+
+.table-card{
+  background-color: transparent !important;
+  padding: 0 !important;
+  overflow: auto;
+}
+
+.table-container{
+  border-radius: 20px;
+}
+
+.table-container::-webkit-scrollbar{
+  display: none;
+}
+
+.table-content{
+  background-color: var(--mat-menu-container-color);
+}

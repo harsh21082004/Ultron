@@ -1,0 +1,11 @@
+<button mat-fab extended 
+  [type]="type" 
+  [disabled]="disabled" 
+  [style.width.px]="width || null" 
+  [style.height.px]="height || null" 
+  [style.borderRadius.px]="borderRadius || null"
+  class="button"
+  (click)="onButtonClick($event)">
+  <mat-icon [style.fontSize.px]="fontSize || null" class="icon">login</mat-icon>
+  <ng-content></ng-content>
+</button>

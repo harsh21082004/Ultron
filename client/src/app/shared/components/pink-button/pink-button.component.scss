@@ -1,0 +1,19 @@
+@use '@angular/material' as mat;
+
+// Customize the entire app. Change :root to your selector if you want to scope the styles.
+.button {
+  @include mat.fab-overrides((
+    container-elevation-shadow: -10px -10px 5px 0px rgb(255, 255, 255),
+  ));
+}
+
+// .button{
+//   width: 100%;
+// }
+
+.icon{
+      display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+}

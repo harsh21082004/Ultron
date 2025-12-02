@@ -1,0 +1,199 @@
+/* your-component.scss */
+
+@use '@angular/material' as mat;
+
+// --- Drawer container styles (no change) ---
+.drawer {
+  transition: width 0.2s ease-in-out;
+  background-color: var(--mat-menu-container-color);
+  overflow: hidden; // Keep this!
+  box-sizing: border-box;
+  height: 100vh;
+}
+
+.drawer-open {
+  width: 300px;
+}
+
+.drawer-closed {
+  width: 75px;
+}
+
+/* * 1. --- REMOVED ---
+ * The global '*' overflow rule was removed.
+ * It conflicts with your body scroll-lock logic and breaks page layout.
+ */
+
+// --- Wrapper for all fading content ---
+.sidebar-content-wrapper {
+  /* * 2. --- ADDED --- 
+   * This is the main fix.
+   * This makes the wrapper fill all available vertical space,
+   * which allows the .nav-lists (with flex-1) inside it to
+   * grow and scroll correctly.
+   */
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  
+  /* Original styles (no change) */
+  height: 100%;
+  transition: opacity 0.2s ease-in-out;
+}
+
+// --- The class that hides the content ---
+.content-hidden {
+  opacity: 0;
+  pointer-events: none; // Prevents interacting with invisible content
+}
+
+.nav-list {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.nav-lists {
+  overflow-y: auto !important;
+}
+
+.nav-lists::-webkit-scrollbar {
+  display: none !important;
+}
+
+.nav-list-item {
+  padding: 0 !important;
+  width: 100%;
+}
+
+.nav-list-item span,
+.nav-list-item a {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.nav-list-item a {
+  padding: 0 10px !important;
+}
+
+.bottom-left-transform-origin.mat-mdc-menu-panel {
+  transform-origin: left bottom !important;
+}
+
+.settings {
+  width: 100%;
+  padding: 16px 10px !important;
+  justify-content: flex-start;
+  min-width: 0;
+  transition: width 0.2s ease-in-out, height 0.2s ease-in-out, padding 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+}
+
+.settings-icon {
+  margin: 0 !important;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+
+.chat {
+  width: 100%;
+  padding: 16px 10px !important;
+  justify-content: flex-start;
+  min-width: 0;
+  transition: width 0.2s ease-in-out, height 0.2s ease-in-out, padding 0.2s ease-in-out, border-radius 0.2s ease-in-out;
+}
+
+.chat-icon {
+  margin: 0 !important;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px; 
+}
+
+:host ::ng-deep .chat-title .mdc-button__label {
+  max-width: 100% !important;
+  -webkit-line-clamp: 1 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+
+/* ----- Mobile off-canvas drawer (<= 639px) ----- */
+@media (max-width: 840px) {
+  .drawer {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100%; // full width on small screens
+    transform: translateX(-100%); // hidden by default (off-canvas left)
+    transition: transform 250ms ease-in-out, opacity 200ms ease-in-out;
+    z-index: 60;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.28);
+  }
+
+  /* When open, slide in */
+  .drawer.drawer-open {
+    transform: translateX(0);
+  }
+
+  /* When closed explicitly on mobile */
+  .drawer.drawer-closed {
+    transform: translateX(-100%);
+    width: 100%;
+  }
+
+  /* Overlay shown behind the drawer to dim content */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 55;
+    opacity: 1;
+    transition: opacity 200ms ease-in-out;
+  }
+
+  /* Header: show the mobile menu toggle (hide on desktop via media queries) */
+  .mobile-drawer-toggle {
+    display: inline-flex;
+  }
+
+  /* Sidebar's internal close button (visible on mobile) */
+  .mobile-drawer-close {
+    display: inline-flex;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 70;
+  }
+
+  /* Make content-hidden behave as fully hidden on mobile too */
+  .content-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Ensure chat takes full width behind overlay/drawer */
+  .chat-container,
+  .chat-input-content {
+    width: 100%;
+  }
+
+  /* * --- REMOVED ---
+   * Removed the mobile override for '* { overflow: visible }'
+   */
+}
+
+/* Hide mobile drawer toggle on wider screens */
+@media (min-width: 640px) {
+  .mobile-drawer-toggle {
+    display: none;
+  }
+
+  .mobile-drawer-close {
+    display: none;
+  }
+}

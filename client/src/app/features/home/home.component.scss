@@ -1,0 +1,19 @@
+.main, .container{
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.sidenav {
+  width: 255px;
+}
+
+body{
+    display: flex;
+    width: 100%;
+}
+
+.app-chat{
+  height: 100vh;
+}

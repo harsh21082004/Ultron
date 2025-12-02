@@ -1,0 +1,57 @@
+.header {
+    height: 60px !important;
+    box-sizing: border-box;
+}
+
+.logo {
+    height: 100%;
+    width: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.logo-image {
+    height: 80%;
+    width: auto;
+}
+
+@media screen and (max-width: 840px) {
+    .logo {
+        margin-left: 30px;
+        gap: 4px;
+    }
+
+    .mobile-drawer-toggle {
+        position: absolute;
+    }
+}
+
+@media screen and (max-width: 500px) {
+    .logo img {
+        height: 40% !important;
+    }
+
+    .logo span {
+        font-size: 15px;
+    }
+
+    .mobile-drawer-toggle {
+        position: absolute;
+    }
+
+    .dark-button {
+        width: 33px !important;
+        height: 33px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .darkicon,
+    .darkicon span {
+        font-size: 17px;
+        width: 17px !important;
+        height: 17px !important;
+    }
+}

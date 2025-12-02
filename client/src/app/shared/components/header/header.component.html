@@ -1,0 +1,44 @@
+<header class="h-16 relative flex-shrink-0 flex items-center justify-between px-4 header">
+  <div class="absolute bottom-0 left-0 w-full z-50">
+    @if (isLoading()) {
+    <mat-progress-bar mode="indeterminate" color="primary">
+    </mat-progress-bar>
+    }
+  </div>
+  @if(isMobileView){
+  <button class="mobile-drawer-toggle mat-icon-button" aria-label="Open menu" (click)="onMobileMenuToggle()">
+    <mat-icon>menu</mat-icon>
+  </button>
+  }
+  <div class="logo">
+    <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
+    <span class="text-xl">Ultron</span>
+  </div>
+  <div class="flex items-center gap-2 right">
+    <button matIconButton aria-label="icon button with a vertical three dot icon" class="dark-button"
+      (click)="themeService.toggleTheme()">
+      <mat-icon class="darkicon">{{isDarkMode() ? light_mode : dark_mode}}</mat-icon>
+    </button>
+    <!-- <button matIconButton aria-label="delete-button icon button with a vertical three dot icon"
+      (click)="deleteHistory()">
+      <mat-icon>delete</mat-icon>
+    </button> -->
+    <div class="flex-shrink-0">
+      @if (user$ | async; as user) {
+      <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
+        <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
+          alt="User Profile Picture" />
+        <div class="nav-text">
+          <p class="font-medium">{{ user.name }}</p>
+          <p class="text-xs">Free Plan</p>
+        </div>
+      </div>
+      } @if( !(user$ | async) && !(loading$ | async)) {
+      <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10" [fontSize]="isMobileView ? 13 : 16">
+        <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
+      </app-pink-button-component>
+      }
+    </div>
+
+  </div>
+</header>
