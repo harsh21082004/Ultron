@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # --- App Config ---
     PROJECT_NAME: str = "Ultron AI Chatbot API"
     PROJECT_VERSION: str = "1.0.0"
-    API_PREFIX: str = "/api"
+    API_PREFIX: str = "/api/py"
 
     # --- CORS Config ---
     # Loads the .env variable "CORS_ORIGINS"

@@ -19,7 +19,6 @@ app = FastAPI(
     description="An API for the Ultron AI Chatbot powered by Groq and LangChain.",
     openapi_url=f"{settings.API_PREFIX}/openapi.json", # Standardized OpenAPI path
     docs_url=f"{settings.API_PREFIX}/docs", # Standardized docs path
-    root_path="/api/py"
 )
 
 # --- Middleware ---
@@ -36,7 +35,7 @@ app.add_middleware(
 
 # Include the main API router
 # All routes from api_router will be prefixed with /api
-app.include_router(api_router, prefix="")
+app.include_router(api_router, prefix=settings.API_PREFIX)
 
 # --- Root Endpoint ---
 
