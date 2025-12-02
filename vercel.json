@@ -6,7 +6,7 @@
       "use": "@vercel/node"
     },
     {
-      "src": "fastapi-backend/main.py",
+      "src": "fastapi-backend/app/main.py",
       "use": "@vercel/python"
     },
     {
@@ -20,7 +20,7 @@
   "routes": [
     {
       "src": "/api/py/(.*)",
-      "dest": "/fastapi-backend/main.py"
+      "dest": "/fastapi-backend/app/main.py"
     },
     {
       "src": "/api/(.*)",
