@@ -37,7 +37,6 @@ export class PinkButtonComponent {
    * @param event The original MouseEvent from the button click.
    */
   onButtonClick(event: MouseEvent): void {
-    event.preventDefault();
     this.buttonClick.emit(event);
   }
 }

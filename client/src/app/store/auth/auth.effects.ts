@@ -79,6 +79,11 @@ export class AuthEffects {
       ofType(AuthActions.login),
       exhaustMap(action =>
         this.authService.login({ email: action.email, password: action.password }).pipe(
+          tap(
+            response => {
+              console.log('Login response:', response);
+            },
+          ),
           map(response => {
             const userWithToken: User = {
               ...response.user,

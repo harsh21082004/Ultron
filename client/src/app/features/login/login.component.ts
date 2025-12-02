@@ -47,8 +47,10 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit(): void {
+    console.log("email, password")
     if (this.loginForm.valid) {
       const { email, password } = this.loginForm.value;
+      console.log(email, password)
       this.store.dispatch(AuthActions.login({ email, password }));
     }
   }

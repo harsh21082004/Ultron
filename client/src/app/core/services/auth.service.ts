@@ -20,7 +20,7 @@ export class AuthService {
   private apiUrl: string = `${(environment as envType).apiUrl}/auth`;
 
   constructor (){
-    console.log(this.apiUrl);
+    console.log(this.apiUrl + '/login');
   }
 
 
