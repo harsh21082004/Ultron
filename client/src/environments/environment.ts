@@ -1,7 +1,6 @@
 export const environment = {
-  production: true,
-  // Routes traffic to the Express backend
-  apiUrl: '/api', 
-  // Routes traffic to the Python backend (note the /py/ prefix)
-  fastApiUrl: '/api/py' 
+  production: false,
+  // TIWARI JI: Use the full URL here for local testing
+  apiUrl: 'https://ultron-eight.vercel.app/api', 
+  fastApiUrl: 'https://ultron-eight.vercel.app/api/py' 
 };
