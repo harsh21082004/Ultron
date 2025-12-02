@@ -27,7 +27,7 @@
       "dest": "/server/index.js"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json|woff|woff2|ttf|eot|txt|webmanifest))",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|gif|ico|json|woff|woff2|ttf|eot|txt|webmanifest))",
       "dest": "/client/$1"
     },
     {

@@ -13,14 +13,12 @@ connectDB();
 
 const app = express();
 
-//add cors options for production and development
+// Add cors options for production and development
 const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:4200',
     optionsSuccessStatus: 200,
-
     credentials: true,
-
-}
+};
 
 app.use(cors(corsOptions));
 
@@ -32,7 +30,8 @@ app.use(passport.initialize());
 // Import the passport config file to execute the strategy setup.
 require('./config/passport.config'); 
 
-app.get('/', (req, res) => {
+// TIWARI JI: This route now handles both '/' (Local) and '/api' (Vercel)
+app.get(['/', '/api'], (req, res) => {
     res.send('API is running...');
 });
 
@@ -44,8 +43,12 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// TIWARI JI: This check allows Vercel to export the app without listening on a port,
+// while still letting you run it locally with `node server/index.js`.
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
 
 module.exports = app;
