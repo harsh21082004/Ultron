@@ -36,7 +36,7 @@ app.add_middleware(
 
 # Include the main API router
 # All routes from api_router will be prefixed with /api
-app.include_router(api_router, prefix=settings.API_PREFIX)
+app.include_router(api_router, prefix="")
 
 # --- Root Endpoint ---
 
