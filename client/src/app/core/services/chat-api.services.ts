@@ -37,6 +37,10 @@ export class ChatApiService {
     };
   }
 
+  constructor (){
+    console.log(this.apiUrl);
+  }
+
   /**
    * --- CORRECTED ---
    * Sends the message AND the chatId to the streaming POST endpoint.

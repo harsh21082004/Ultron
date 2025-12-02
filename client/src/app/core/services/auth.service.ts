@@ -19,6 +19,11 @@ export class AuthService {
   // Use the API URL from your environment file
   private apiUrl: string = `${(environment as envType).apiUrl}/auth`;
 
+  constructor (){
+    console.log(this.apiUrl);
+  }
+
+
   // --- OAuth Methods ---
 
   loginWithGoogle(): void {

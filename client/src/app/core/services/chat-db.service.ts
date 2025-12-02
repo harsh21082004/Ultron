@@ -12,7 +12,9 @@ export class ChatDbService {
   // This is the URL for your Node.js/Express backend
   private apiUrl: string = `${(environment as envType).apiUrl}/chats`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+    console.log(this.apiUrl);
+   }
 
   /**
    * Helper function to get the authentication headers with the JWT.
