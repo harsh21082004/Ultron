@@ -11,7 +11,7 @@
     <!-- This inner div is for centering the content -->
     <div class="w-full max-w-4xl mx-auto p-6 space-y-6">
       <!-- Welcome screen or chat messages -->
-      @if (messages.length === 0 && !(isLoading$ | async)) {
+      <!-- @if (messages.length === 0 && !(isLoading$ | async)) {
       <div class="flex flex-col items-center justify-center h-full text-center">
         <img src="assets/images/ultron.gif" alt="Ultron" [ngClass]="isMobileView ? 'w-14' : 'w-24'">
         @if (user$ | async; as user) {
@@ -35,7 +35,7 @@
       </div>
 
       }
-      } @else {
+      } @else { -->
       <!-- 
         --- MODIFIED: ---
         1. Using 'track trackByMessage' for performance
@@ -124,7 +124,7 @@
         </div>
       </div>
       }
-      }
+      <!-- } -->
     </div>
   </div>
 
