@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,8 +11,7 @@ import { ThemeService } from '../../../core/services/theme.services';
 import { Store } from '@ngrx/store';
 import { AppState } from '../../../store';
 import * as AuthActions from '../../../store/auth/auth.actions';
-
-
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-settings-dialog',
@@ -25,186 +24,216 @@ import * as AuthActions from '../../../store/auth/auth.actions';
     MatIconModule,
     MatListModule,
     MatSelectModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatTooltipModule
   ],
   template: `
     <!-- 
-      Main container for the dialog, styled to match the dark, modal look.
-      We use TailwindCSS for layout and Material components for UI.
+      TIWARI JI: 
+      The container fills the MatDialog overlay.
+      Size controlled by global CSS class 'settings-dialog-overlay'.
     -->
-    <div class="settings-container h-[400px] w-[600px] bg-[#1C1D21] text-white flex flex-col rounded-md overflow-hidden">
+    <div class="settings-container bg-[#1C1D21] text-white flex flex-col overflow-hidden h-full w-full">
       
       <!-- Header Bar -->
-      <div class="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-700">
-        <h2 class="text-lg font-semibold">{{ selectedCategory() }}</h2>
-        <button mat-icon-button (click)="closeDialog()" class="text-gray-400 hover:text-white">
+      <div class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-700 bg-[#25262b]">
+        <h2 class="text-lg font-semibold tracking-wide">{{ selectedCategory() }}</h2>
+        <button mat-icon-button (click)="closeDialog()" class="text-gray-400 hover:text-white transition-colors">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
       <!-- Two-column layout -->
-      <div class="flex flex-grow overflow-y-auto ">
+      <div class="flex flex-grow overflow-hidden">
         
         <!-- Left Navigation Pane -->
-        <div class="nav-pane w-1/3 border-r border-gray-700 p-3">
-          <mat-nav-list>
+        <div class="nav-pane border-r border-gray-700 p-2 overflow-y-auto custom-scrollbar transition-all duration-300"
+             [ngClass]="isMobileView ? 'w-[60px] items-center flex flex-col' : 'w-1/3'">
+          <mat-nav-list class="w-full">
             @for (item of settingsMenu; track item.id) {
+              <!-- 
+                TIWARI JI: 
+                I updated the [ngClass] here.
+                On Mobile: 'w-10 h-10 mx-auto justify-center px-0' -> Forces a perfect square, centered, with no padding.
+                Combined with 'rounded-full', this creates a perfect circle.
+              -->
               <mat-list-item 
                 (click)="selectedCategory.set(item.id)"
                 [class.active-item]="selectedCategory() === item.id"
-                class="text-xs">
-                <mat-icon matListItemIcon class="mat-icon">{{ item.icon }}</mat-icon>
-                <span matListItemTitle>{{ item.name }}</span>
+                class="mb-1 transition-colors duration-200 hover:bg-white/5"
+                [ngClass]="isMobileView ? 'rounded-full w-10 h-10 mx-auto justify-center px-0' : 'rounded-full'"
+                [matTooltip]="isMobileView ? item.name : ''"
+                [class.mat-list-mobile]="isMobileView"
+                [matTooltipPosition]="'right'">
+                
+                <mat-icon matListItemIcon class="mat-icon text-gray-400" 
+                          [class.text-pink-500]="selectedCategory() === item.id" 
+                          [class.mat-icon-mobile]="isMobileView">
+                  {{ item.icon }}
+                </mat-icon>
+                
+                @if (!isMobileView) {
+                  <span matListItemTitle class="text-sm font-medium ml-2">{{ item.name }}</span>
+                }
               </mat-list-item>
             }
           </mat-nav-list>
         </div>
 
         <!-- Right Content Pane -->
-        <div class="content-pane w-2/3 p-6 overflow-y-auto">
+        <div class="content-pane p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-[#1C1D21]"
+             [ngClass]="isMobileView ? 'w-[calc(100%-60px)]' : 'w-2/3'">
           
-          <!-- Use @switch to show content based on selection -->
-          @switch (selectedCategory()) {
-            
-            <!-- General Settings -->
-            @case ('General') {
-              <div class="flex flex-col gap-6">
-                <div class="setting-item">
-                  <label class="text-sm text-gray-400">Language</label>
-                  <p class="text-xs text-gray-500 mb-2">Select the language you primarily use.</p>
-                  <mat-form-field appearance="fill" class="w-full">
-                    <mat-select [value]="'auto'">
-                      <mat-option value="auto">Auto-detect</mat-option>
-                      <mat-option value="en">English</mat-option>
-                      <mat-option value="es">Spanish</mat-option>
-                    </mat-select>
-                  </mat-form-field>
+          <div class="fade-in">
+            @switch (selectedCategory()) {
+              
+              @case ('General') {
+                <div class="flex flex-col gap-6">
+                  <div class="setting-item">
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Language</label>
+                    <p class="text-xs text-gray-500 mb-3">Select the language you primarily use.</p>
+                    <mat-form-field appearance="outline" class="w-full density-compact">
+                      <mat-select [value]="'auto'">
+                        <mat-option value="auto">Auto-detect</mat-option>
+                        <mat-option value="en">English</mat-option>
+                        <mat-option value="es">Spanish</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                  <div class="setting-item">
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Spoken Language</label>
+                    <p class="text-xs text-gray-500 mb-3">For best results, select the language you mainly speak.</p>
+                    <mat-form-field appearance="outline" class="w-full density-compact">
+                      <mat-select [value]="'auto'">
+                        <mat-option value="auto">Auto-detect</mat-option>
+                        <mat-option value="en-US">English (US)</mat-option>
+                        <mat-option value="en-GB">English (UK)</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
                 </div>
-                <div class="setting-item">
-                  <label class="text-sm text-gray-400">Spoken language</label>
-                  <p class="text-xs text-gray-500 mb-2">For best results, select the language you mainly speak.</p>
-                  <mat-form-field appearance="fill" class="w-full">
-                    <mat-select [value]="'auto'">
-                      <mat-option value="auto">Auto-detect</mat-option>
-                      <mat-option value="en-US">English (United States)</mat-option>
-                      <mat-option value="en-GB">English (United Kingdom)</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-              </div>
-            }
+              }
 
-            <!-- Appearance Settings -->
-            @case ('Appearance') {
-              <div class="flex flex-col gap-6">
-                <div class="setting-item">
-                  <label class="text-sm text-gray-400">Theme</label>
-                  <p class="text-xs text-gray-500 mb-2">Change the application theme.</p>
-                  <mat-form-field appearance="fill" class="w-full">
-                    <mat-select [value]="currentTheme()" (valueChange)="toggleTheme()">
-                      <mat-option value="light">Light</mat-option>
-                      <mat-option value="dark">Dark</mat-option>
-                    </mat-select>
-                  </mat-form-field>
+              @case ('Appearance') {
+                <div class="flex flex-col gap-6">
+                  <div class="setting-item">
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Theme</label>
+                    <p class="text-xs text-gray-500 mb-3">Customize the look and feel.</p>
+                    <mat-form-field appearance="outline" class="w-full density-compact">
+                      <mat-select [value]="currentTheme()" (valueChange)="toggleTheme()">
+                        <mat-option value="light">
+                          <div class="flex items-center gap-2"><mat-icon class="text-sm">light_mode</mat-icon> Light Mode</div>
+                        </mat-option>
+                        <mat-option value="dark">
+                          <div class="flex items-center gap-2"><mat-icon class="text-sm">dark_mode</mat-icon> Dark Mode</div>
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
                 </div>
-              </div>
-            }
+              }
 
-            @case ('Account') {
-              <div class="flex flex-col gap-6">
-                <div class="setting-item">
-                  <label class="text-sm text-gray-400">Account</label>
-                  <p class="text-xs text-gray-500 mb-2">Change Account Setting</p>
-                  <!-- Logout -->
-                  <mat-list-item 
-                  (click)="logOut()"
-                  class="text-xs">
-                <mat-icon matListItemIcon class="mat-icon">exit_to_app</mat-icon>
-                <span matListItemTitle>Logout</span>
-              </mat-list-item>
+              @case ('Account') {
+                <div class="flex flex-col gap-6">
+                  <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <h3 class="text-red-400 font-medium text-sm mb-1">Session Management</h3>
+                    <p class="text-xs text-gray-400 mb-4">Sign out of your account on this device.</p>
+                    <button mat-flat-button color="warn" (click)="logOut()" class="w-full">
+                      <mat-icon>logout</mat-icon>
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
-              </div>
-            }
+              }
 
-            <!-- Other categories -->
-            @case ('Personalization') {
-              <p>Personalization settings will go here.</p>
+              @default {
+                 <div class="flex flex-col items-center justify-center h-full text-gray-500 opacity-50 mt-10">
+                    <mat-icon class="text-4xl mb-2">{{ getIconForCategory(selectedCategory()) }}</mat-icon>
+                    <p class="text-sm">{{ selectedCategory() }} settings coming soon.</p>
+                 </div>
+              }
             }
-            @case ('Data Controls') {
-              <p>Data control settings will go here.</p>
-            }
-            @case ('Security') {
-              <p>Security settings will go here.</p>
-            }
-          }
+          </div>
 
         </div>
       </div>
     </div>
   `,
   styles: [`
-    /* * We use ::ng-deep to style the Angular Material components
-     * to match the dark theme, as they are not children of this component's
-     * encapsulated view.
-    */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 20px; }
     
-    /* Remove the default dialog padding */
-    :host ::ng-deep .mat-mdc-dialog-container .mdc-dialog__surface {
-      padding: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
+    :host {
+      display: block;
+      height: 100%;
+      width: 100%;
     }
 
-    /* Style for the active navigation item */
+    .mat-icon-mobile{
+      margin: 0 9.6px;
+    }
+
+    .mat-list-mobile{
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
+
     .nav-pane .mat-mdc-list-item.active-item {
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.08);
+      /* Border radius is handled by utility classes now */
     }
 
-    .nav-pane .mat-mdc-list-item:hover, .mat-mdc-list-item:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      cursor: pointer;
+    /* TIWARI JI: This rule ensures that when we force the list item to be square on mobile,
+       the internal content (the icon) is strictly centered.
+    */
+    :host ::ng-deep .mat-mdc-list-item.justify-center .mdc-list-item__content {
+       justify-content: center !important;
+       padding: 0 !important;
     }
 
-    /* Style Material Select for dark mode */
-    :host ::ng-deep .mat-mdc-form-field-type-mat-select .mat-mdc-text-field-wrapper {
-      background-color: #2a2b2f !important;
-      border-radius: 8px 8px 0 0;
+    :host ::ng-deep .mat-mdc-form-field.density-compact .mat-mdc-text-field-wrapper {
+      padding-top: 6px; padding-bottom: 6px; background-color: #2a2b2f !important;
     }
-
-    .mat-icon{
-          display: flex;
-    align-items: center;
-    justify-content: center;
+    :host ::ng-deep .mat-mdc-select-value, :host ::ng-deep .mat-mdc-select-arrow, :host ::ng-deep .mat-mdc-form-field-label {
+      color: #e0e0e0 !important;
     }
-
-    :host ::ng-deep .mat-mdc-list-item-icon {
-      font-size: 20px;
-    }
-
-     :host ::ng-deep .mdc-list-item__primary-text{
-      font-size: 14px;
-     }
-
-    :host ::ng-deep .mat-mdc-select-value, 
-    :host ::ng-deep .mat-mdc-select-arrow,
-    :host ::ng-deep .mat-mdc-select-value-text {
-      color: #fff !important;
-    }
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   `]
 })
-export class SettingsDialogComponent {
+export class SettingsDialogComponent implements OnInit {
   themeService = inject(ThemeService);
   dialogRef = inject(MatDialogRef<SettingsDialogComponent>);
-
-  // Signal to track the selected navigation item
-  selectedCategory = signal('General');
   private store = inject(Store<AppState>);
 
-
-  // Computed signal to get the current theme from your service
+  selectedCategory = signal('General');
   currentTheme = computed(() => this.themeService.currentTheme());
+
+  // TIWARI JI: Changed breakpoint to match your sidebar (840px)
+  isMobileView = window.innerWidth <= 840;
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    this.isMobileView = (event.target as Window).innerWidth <= 840;
+    this.updateDialogSize();
+  }
+
+  updateDialogSize() {
+    if (this.isMobileView) {
+      console.log(this.isMobileView)
+      this.dialogRef.updateSize('95%', '100%'); // Mobile: 95% width, 80% viewport height
+    } else {
+      this.dialogRef.updateSize('600px', '500px'); // Desktop: Fixed size
+    }
+  }
+
+  ngOnInit() {
+    // TIWARI JI: Set initial size based on current view
+    this.updateDialogSize();
+  }
+
 
   settingsMenu = [
     { id: 'General', name: 'General', icon: 'settings' },
@@ -227,5 +256,9 @@ export class SettingsDialogComponent {
   logOut(): void {
     this.store.dispatch(AuthActions.logout());
     this.closeDialog();
+  }
+
+  getIconForCategory(id: string): string {
+    return this.settingsMenu.find(i => i.id === id)?.icon || 'settings';
   }
 }

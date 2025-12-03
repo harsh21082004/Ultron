@@ -17,6 +17,10 @@
 
 .drawer-closed {
   width: 75px;
+  .settings{
+    width: auto !important;
+    aspect-ratio: 1/1;
+  }
 }
 
 /* * 1. --- REMOVED ---

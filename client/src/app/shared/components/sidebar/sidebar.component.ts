@@ -1,8 +1,8 @@
 import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router, NavigationStart } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable, Subject, Subscription, takeUntil } from 'rxjs';
+import { Observable, Subject, Subscription, filter, takeUntil } from 'rxjs';
 import { AppState } from '../../../store';
 import { User } from '../../models/user.model';
 import * as AuthActions from '../../../store/auth/auth.actions';
@@ -38,7 +38,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   private userSubscription!: Subscription;
 
-  constructor(private store: Store<AppState>, private drawerService: DrawerService) {
+  constructor(
+    private store: Store<AppState>, 
+    private drawerService: DrawerService,
+    private router: Router // TIWARI JI: Injected Router here
+  ) {
     this.user$ = this.store.select(selectAuthUser);
     this.chats$ = this.store.select(selectAllChats);
     this.isMobileView = window.innerWidth <= 840;
@@ -98,10 +102,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.drawerOpenUsingMenu = false;
     this.drawerOpenUsingHover = false;
     this.drawerService.set(false); // Tell the service to close
-
-    // --- CONFLICT REMOVED ---
-    // REMOVED: this.isDrawerOpen = false;
-    // REMOVED: this.onDrawerStateChanged();
   }
 
   openDrawer(): void {
@@ -110,10 +110,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
       this.drawerOpenUsingHover = true;
       this.drawerService.set(true); // Tell the service to open
     }
-
-    // --- CONFLICT REMOVED ---
-    // REMOVED: this.isDrawerOpen = true;
-    // REMOVED: this.onDrawerStateChanged();
   }
 
   // Called whenever the drawer state changes (used to lock/unlock body on mobile)
@@ -153,6 +149,16 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.isDrawerOpen = open;
         // 2. Run side effects (like scroll lock)
         this.onDrawerStateChanged();
+      });
+
+    // TIWARI JI: Automatically close drawer when navigation starts
+    this.router.events
+      .pipe(
+        filter(event => event instanceof NavigationStart),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.closeDrawer();
       });
   }
 

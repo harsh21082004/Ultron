@@ -22,7 +22,7 @@
         <h2 class="font-semibold" [ngClass]="isMobileView ? 'text-lg' : 'text-3xl'">Can I help you with anything?</h2>
       </div>
       @if ((messages.length === 0) && !(isLoading$ | async)) {
-      <div class="flex flex-wrap gap-3 sm:gap-4 text-left mt-4">
+      <div class="flex flex-wrap gap-3 sm:gap-4 justify-center text-left mt-4">
         @for (prompt of promptSuggestions; track prompt.title) {
         <button (click)="sendSuggestion(prompt.title)" class="bg-gray-100 dark:bg-[#162731] py-1.5 sm:py-2 px-3 sm:px-5 rounded-full
              hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-center

@@ -25,19 +25,26 @@
     </button> -->
     <div class="flex-shrink-0">
       @if (user$ | async; as user) {
-      <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
-        <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
-          alt="User Profile Picture" />
-        <div class="nav-text">
-          <p class="font-medium">{{ user.name }}</p>
-          <p class="text-xs">Free Plan</p>
+      <!-- <button [matMenuTriggerFor]="profile" matIconButton> -->
+        <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
+          <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
+            alt="User Profile Picture" />
+          <div class="nav-text">
+            <p class="font-medium">{{ user.name }}</p>
+            <p class="text-xs">Free Plan</p>
+          </div>
         </div>
-      </div>
+      <!-- </button> -->
       } @if( !(user$ | async) && !(loading$ | async)) {
-      <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10" [fontSize]="isMobileView ? 13 : 16">
+      <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10"
+        [fontSize]="isMobileView ? 13 : 16">
         <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
       </app-pink-button-component>
       }
+      <!-- <mat-menu #profile="matMenu">
+        <button mat-menu-item>Item 1</button>
+        <button mat-menu-item>Item 2</button>
+      </mat-menu> -->
     </div>
 
   </div>
