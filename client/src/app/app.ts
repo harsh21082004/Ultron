@@ -6,10 +6,10 @@ import { filter, Observable } from 'rxjs';
 import { selectIsAuthenticated } from './store/auth/auth.selectors';
 import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { SidebarComponent } from './shared/components/sidebar/sidebar.component'; // Assuming sidebar.component.ts
+import { SidebarComponent } from './shared/components/sidebar/sidebar.component'; 
 import { LoadingService } from './core/services/loading.service';
 import { ThemeService } from './core/services/theme.services';
-import { AppState } from './store'; // Assuming /store/index.ts
+import { AppState } from './store'; 
 import { DrawerService } from './core/services/drawer.service';
 
 @Component({
@@ -21,23 +21,26 @@ import { DrawerService } from './core/services/drawer.service';
     MatProgressBarModule,
     SidebarComponent,
   ],
+  // TIWARI JI: 
+  // 1. h-[100dvh] ensures we take the EXACT viewport height (fixes mobile address bar issue).
+  // 2. overflow-hidden prevents the body scrollbar.
+  // 3. main has flex-1 and overflow-hidden to contain the router outlet.
   template: `
-    <div class="relative flex">
-  @if (!isLoginOrSignupPage()) {
-    <app-sidebar-component></app-sidebar-component>
-  }
+    <div class="relative flex h-[100dvh] w-full overflow-hidden">
+      @if (!isLoginOrSignupPage()) {
+        <app-sidebar-component></app-sidebar-component>
+      }
 
-  <!-- overlay: use DrawerService observable and mobile check -->
-  <div *ngIf="(drawer.isOpen$ | async) && isMobileView" class="drawer-overlay" (click)="drawer.close()"></div>
+      <!-- overlay -->
+      <div *ngIf="(drawer.isOpen$ | async) && isMobileView" class="drawer-overlay" (click)="drawer.close()"></div>
 
-  <main class="min-w-0">
-    <router-outlet></router-outlet>
-  </main>
-</div>
-
+      <main class="flex-1 min-w-0 h-full overflow-hidden relative">
+        <router-outlet></router-outlet>
+      </main>
+    </div>
   `,
 })
-export class App implements OnInit { // <-- Renamed from 'App' to 'AppComponent'
+export class App implements OnInit { 
   selectIsAuthenticated$: Observable<boolean>;
 
   private loadingService = inject(LoadingService);
@@ -62,7 +65,6 @@ export class App implements OnInit { // <-- Renamed from 'App' to 'AppComponent'
     });
 
     this.isMobileView = window.innerWidth <= 639;
-    // add a resize listener (or HostListener) if you prefer:
     window.addEventListener('resize', () => {
       this.isMobileView = window.innerWidth <= 639;
       this.cdr.markForCheck();

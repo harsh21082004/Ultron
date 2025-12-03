@@ -14,6 +14,8 @@ body{
     width: 100%;
 }
 
-.app-chat{
-  height: 100vh;
+.app-chat {
+  height: 100%;
+  width: 100%;
+  display: block; /* Ensures it behaves like a block container */
 }
