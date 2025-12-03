@@ -22,7 +22,7 @@ import { DrawerService } from './core/services/drawer.service';
     SidebarComponent,
   ],
   template: `
-    <div class="relative flex h-[100%] w-[100%]">
+    <div class="relative flex">
   @if (!isLoginOrSignupPage()) {
     <app-sidebar-component></app-sidebar-component>
   }
@@ -30,7 +30,7 @@ import { DrawerService } from './core/services/drawer.service';
   <!-- overlay: use DrawerService observable and mobile check -->
   <div *ngIf="(drawer.isOpen$ | async) && isMobileView" class="drawer-overlay" (click)="drawer.close()"></div>
 
-  <main class="flex-grow min-w-0">
+  <main class="min-w-0">
     <router-outlet></router-outlet>
   </main>
 </div>
