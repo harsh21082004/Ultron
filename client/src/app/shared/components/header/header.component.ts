@@ -16,6 +16,7 @@ import { PinkButtonComponent } from "../pink-button/pink-button.component";
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { DrawerService } from '../../../core/services/drawer.service';
 import * as ChatActions from '../../../store/chat/chat.actions';
+import * as AuthActions from '../../../store/auth/auth.actions';
 
 
 @Component({
@@ -49,6 +50,10 @@ export class HeaderComponent {
   onMobileMenuToggle() {
     // if SidebarComponent is child, call an @ViewChild or use a shared service / store
     this.drawer.toggle();
+  }
+
+  handleLogout(){
+    this.store.dispatch(AuthActions.logout());
   }
 
   @HostListener('window:resize')

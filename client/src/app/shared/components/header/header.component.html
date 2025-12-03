@@ -25,7 +25,7 @@
     </button> -->
     <div class="flex-shrink-0">
       @if (user$ | async; as user) {
-      <!-- <button [matMenuTriggerFor]="profile" matIconButton> -->
+      <button [matMenuTriggerFor]="profile" matButton class="p-2">
         <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
           <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
             alt="User Profile Picture" />
@@ -34,17 +34,29 @@
             <p class="text-xs">Free Plan</p>
           </div>
         </div>
-      <!-- </button> -->
+      </button>
+      <mat-menu #profile="matMenu" class="w-[250px] px-5 py-2 !rounded-3xl profile-menu">
+        <div class="flex flex-col justify-start items-center">
+          <span>{{user.email}}</span>
+          <div class="relative p-2 mt-5 rounded-md w-full flex flex-col items-center gap-3 cursor-pointer">
+            <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
+              alt="User Profile Picture" />
+            <div class="nav-text">
+              <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
+            </div>
+            <div class="flex gap-1 ">
+              <button matButton [disableRipple]="true" class="!rounded-l-[15] !rounded-r-[0] w-25 h-15 !bg-[#0000002b]">Settings</button>
+              <button matButton disableRipple class="!rounded-r-[15] !rounded-l-[0] w-25 h-15 !bg-[#0000002b]" (click)="handleLogout()">Logout</button>
+            </div>
+          </div>
+        </div>
+      </mat-menu>
       } @if( !(user$ | async) && !(loading$ | async)) {
       <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10"
         [fontSize]="isMobileView ? 13 : 16">
         <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
       </app-pink-button-component>
       }
-      <!-- <mat-menu #profile="matMenu">
-        <button mat-menu-item>Item 1</button>
-        <button mat-menu-item>Item 2</button>
-      </mat-menu> -->
     </div>
 
   </div>
