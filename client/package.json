@@ -36,6 +36,7 @@
     "@ngrx/store": "^20.0.1",
     "@ngrx/store-devtools": "^20.0.1",
     "@tailwindcss/postcss": "^4.1.16",
+    "highlight.js": "^11.11.1",
     "jwt-decode": "^4.0.0",
     "marked": "^16.4.1",
     "monaco-editor": "^0.54.0",
