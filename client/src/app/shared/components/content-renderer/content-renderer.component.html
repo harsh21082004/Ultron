@@ -1,1 +1,63 @@
-<p>content-renderer works!</p>
+@for (block of blocks; track $index) {
+  <ng-container [ngSwitch]="block.type">
+
+    <!-- TEXT BLOCK -->
+    <ng-container *ngSwitchCase="'text'">
+      @if (sender === 'user') {
+        <!-- User Message Logic -->
+        @if (isLong(block.content)) {
+          <div>
+            <div class="user-text-simple" [class.truncate-lines]="!isExpanded($index)">
+              {{ block.content }}
+            </div>
+            <button (click)="toggleExpand($index)" class="expand-button" [class.dark-mode]="isDarkMode()">
+              {{ isExpanded($index) ? 'Show Less' : 'Show More' }}
+            </button>
+          </div>
+        } @else {
+          <div class="user-text-simple">{{ block.content }}</div>
+        }
+      } @else {
+        <!-- AI Message Logic (Markdown) -->
+        <div class="prose" 
+             [class.dark-prose]="isDarkMode()" 
+             [innerHTML]="sanitize($any(block.content))">
+        </div>
+      }
+    </ng-container>
+
+    <!-- TABLE BLOCK -->
+    <app-table-template-component *ngSwitchCase="'table'" 
+                                  [data]="$any(block.content)">
+    </app-table-template-component>
+
+    <!-- CODE BLOCK -->
+    <ng-container *ngSwitchCase="'code'">
+      <div class="code-wrapper my-4 rounded-xl overflow-hidden shadow-sm">
+        
+        <!-- Code Header -->
+        <div class="flex justify-between items-center px-4 py-3 code-header">
+          <span class="text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+            {{ $any(block.content).language || 'Code' }}
+          </span>
+          <button (click)="copyCode($any(block.content).code)"
+                  class="flex items-center gap-1.5 text-xs">
+            <mat-icon class="!w-[14px] !h-[14px] !text-[14px] leading-none">content_copy</mat-icon>
+            <span>Copy</span>
+          </button>
+        </div>
+
+        <!-- Code Body -->
+        <div class="relative overflow-x-auto mt-1">
+          <pre class="m-0 p-4"><code 
+            [appHighlight]="$any(block.content).code" 
+            [language]="$any(block.content).language" 
+            [class.dark-theme]="isDarkMode()"
+            [class.light-theme]="!isDarkMode()"
+            class="text-sm font-mono leading-relaxed outline-none block"></code></pre>
+        </div>
+      </div>
+    </ng-container>
+
+  </ng-container>
+}

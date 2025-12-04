@@ -77,3 +77,19 @@ body {
   backdrop-filter: blur(1px);
   background-color: rgba(0, 0, 0, 0.336);
 }
+
+.search-chat-panel{
+  max-width: 500px !important;
+  width: 90% !important;
+}
+
+.search-chat-panel .mat-bottom-sheet-container{
+  padding: 0 !important;
+  background-color: transparent !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.search-chat-panel .mat-bottom-sheet-container::-webkit-scrollbar{
+display: none !important;
+}

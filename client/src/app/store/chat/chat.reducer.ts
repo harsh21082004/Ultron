@@ -58,7 +58,7 @@ export const chatReducer = createReducer(
 
   on(ChatActions.streamStarted, (state) => ({
     ...state,
-    isLoading: false, // Stop loading, stream has begun
+    isLoading: true, // Stop loading, stream has begun
     messages: [
       ...state.messages,
       { 
@@ -179,6 +179,29 @@ export const chatReducer = createReducer(
     ...state,
     isLoading: false,
     error: error
+  })),
+  // --- TIWARI JI: NEW SEARCH HANDLERS ---
+  on(ChatActions.searchChats, (state) => ({
+    ...state,
+    isSearching: true,
+    error: null
+  })),
+
+  on(ChatActions.searchChatsSuccess, (state, { results }) => ({
+    ...state,
+    isSearching: false,
+    searchResults: results
+  })),
+
+  on(ChatActions.searchChatsFailure, (state, { error }) => ({
+    ...state,
+    isSearching: false,
+    error: error
+  })),
+
+  on(ChatActions.stopStream, (state)=>({
+    ...state,
+    isLoading: false
   }))
 );
 

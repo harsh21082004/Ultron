@@ -42,7 +42,7 @@
   </div>
 
   <div class="py-5">
-    <button matButton routerLink="/settings/general" class="settings flex justify-start items-center gap-4">
+    <button matButton (click)="openSettings()" class="settings flex justify-start items-center gap-4">
       <mat-icon class="settings-icon">brightness_5</mat-icon>
       <span class="text-base font-normal" [class.content-hidden]="!isDrawerOpen">Settings</span>
     </button>

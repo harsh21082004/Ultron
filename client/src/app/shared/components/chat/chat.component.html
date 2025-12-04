@@ -15,9 +15,11 @@
       <div class="flex flex-col items-center justify-center h-full text-center">
         <img src="assets/images/ultron.gif" alt="Ultron" [ngClass]="isMobileView ? 'w-14' : 'w-24'">
         @if (user$ | async; as user) {
-        <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good Evening, {{ user.name }}.</h1>
+        <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good Evening,
+          {{ user.name }}.</h1>
         } @else {
-        <h1 class="font-bold text-black dark:text-gray-100" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good Evening.</h1>
+        <h1 class="font-bold text-black dark:text-gray-100" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good
+          Evening.</h1>
         }
         <h2 class="font-semibold" [ngClass]="isMobileView ? 'text-lg' : 'text-3xl'">Can I help you with anything?</h2>
       </div>
@@ -81,9 +83,9 @@
         }
 
         <!-- ORIGINAL Message Bubble -->
-        <div class="max-w-4xl w-[100%] py-2 px-4 " [ngClass]="{
+        <div class="max-w-4xl  py-2 px-4 " [ngClass]="{
                   'user-bubble': message.sender === 'user',
-                  'rounded-t-2xl rounded-br-2xl rounded-bl-md': message.sender === 'ai'
+                  'rounded-t-2xl w-[100%] rounded-br-2xl rounded-bl-md': message.sender === 'ai'
                 }" [ngStyle]="message.sender === 'ai' ? {'background-color': 'transparent !important'} : null">
           @for (block of message.content; track $index) {
           <!-- Make sure your selector matches your component (e.g., app-content-renderer-component) -->
@@ -137,27 +139,50 @@
 
       <div class="flex items-center justify-between mt-2">
         <div class="flex items-center gap-1.5 sm:gap-2">
-          <button type="button" mat-stroked-button
-            class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
+          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
             <mat-icon class="text-[20px] sm:text-[24px]">mic</mat-icon>
           </button>
-          <button type="button" mat-stroked-button
-            class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
-            <mat-icon class="text-[20px] sm:text-[24px]">add_photo_alternate</mat-icon>
-            <span class="hidden xs:inline sm:inline ml-1">Create an Image</span>
+          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
+            <mat-icon class="text-[20px] sm:text-[24px] font-extrabold rotate-45">attach_file</mat-icon>
           </button>
-          <button type="button" mat-stroked-button
-            class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
+          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
             <mat-icon class="text-[20px] sm:text-[24px]">search</mat-icon>
-            <span class="hidden xs:inline sm:inline ml-1">Search the web</span>
           </button>
         </div>
-
-        <button type="submit" matMiniFab class="bg-gray-200 dark:bg-gray-700 hover:bg-pink-600 disabled:bg-gray-300 dark:disabled:bg-gray-800
-             !w-10 !h-10 sm:!w-11 sm:!h-11" [disabled]="chatForm.invalid || (isLoading$ | async)"
-          aria-label="Send message">
-          <img src="assets/images/send.svg" alt="" class="w-5 h-5 sm:w-6 sm:h-6">
-        </button>
+        <div class="right flex justify-center items-center gap-3">
+          <button [matMenuTriggerFor]="model" matButton class="p-2 flex justify-center items-center">
+            Pro
+            <mat-icon class="text-[20px] sm:text-[24px] font-extrabold">keyboard_arrow_down</mat-icon>
+          </button>
+          <mat-menu #model="matMenu" class="min-w-[250px] px-0 py-1 !rounded-2xl profile-menu">
+            <div class="flex flex-col justify-start items-start">
+              <span class="px-3">Select Model</span>
+              <div class="down mt-2 w-full">
+                <button mat-menu-item>Thinking
+                  <p class="text-xs font-normal text-gray-400">deep thinking for complex problems</p>
+                </button>
+                <button mat-menu-item>Fast
+                  <p class="text-xs font-normal text-gray-400">responds quickly</p>
+                </button>
+                <button mat-menu-item>Light
+                  <p class="text-xs font-normal text-gray-400">fast for easy problems</p>
+                </button>
+              </div>
+            </div>
+          </mat-menu>
+          @if (isLoading$ | async) {
+          <button type="button" matMiniFab (click)="stopGeneration()" matTooltip="Stop generating"
+            class="bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white !w-10 !h-10 sm:!w-11 sm:!h-11 shadow-none transition-colors">
+            <!-- Stop Icon (Square) -->
+            <mat-icon class="text-[20px] sm:text-[24px]">stop</mat-icon>
+          </button>
+          } @else {
+          <button type="submit" matMiniFab class="bg-gray-200 dark:bg-gray-700 hover:bg-pink-600 disabled:bg-gray-300 dark:disabled:bg-gray-800
+                !w-10 !h-10 sm:!w-11 sm:!h-11" [disabled]="chatForm.invalid" aria-label="Send message">
+            <img src="assets/images/send.svg" alt="" class="w-5 h-5 sm:w-6 sm:h-6 invert dark:invert-[0]">
+          </button>
+          }
+        </div>
       </div>
     </form>
 

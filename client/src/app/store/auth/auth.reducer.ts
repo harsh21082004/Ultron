@@ -33,7 +33,8 @@ export const authReducer = createReducer(
 
   // Handle session init failure (resets to initial state)
   on(AuthActions.initSessionFailure, (state) => ({
-    ...initialAuthState
+    ...initialAuthState,
+    loading: false
   })),
 
   // --- SUCCESS HANDLERS ---

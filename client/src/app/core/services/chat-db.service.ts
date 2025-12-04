@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ChatMessage } from '../../store/chat/chat.state';
 import { environment } from '../../../environments/environment';
@@ -57,6 +57,14 @@ export class ChatDbService {
   getAllChats(userId: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/get/all/${userId}`, {
       headers: this.getAuthHeaders()
+    });
+  }
+
+  searchChats(query: string): Observable<any[]> {
+    const params = new HttpParams().set('query', query);
+    return this.http.get<any[]>(`${this.apiUrl}/search`, {
+      headers: this.getAuthHeaders(),
+      params
     });
   }
 

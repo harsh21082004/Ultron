@@ -1,0 +1,30 @@
+.search-container {
+  background-color: var(--mat-menu-container-color);
+  color: var(--mat-sys-on-surface);
+  min-height: 300px; /* Minimum height for the bottom sheet */
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+/* Material List Overrides for Transparency */
+:host ::ng-deep .mat-mdc-list-item {
+  background: transparent;
+}
+
+:host ::ng-deep .mat-mdc-list-item-icon {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* Ensure placeholder text is visible in both modes */
+input::placeholder {
+  color: #9ca3af; /* Gray-400 */
+}
+
+.chat-icon{
+    width: auto !important;
+    height: 100% !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

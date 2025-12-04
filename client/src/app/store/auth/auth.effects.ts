@@ -38,6 +38,7 @@ export class AuthEffects {
         if (!token || token === 'undefined') { // Check for the bad token
           return of(AuthActions.initSessionFailure());
         }
+        console.log("Init session")
 
         return this.authService.getUserDetails(token).pipe(
 

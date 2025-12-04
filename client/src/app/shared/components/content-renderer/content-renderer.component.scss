@@ -1,0 +1,278 @@
+/* FIX: Replaced .sender-prose with this style
+      for simple user text.
+    */
+.user-text-simple {
+    margin: 0;
+    padding: 0;
+    line-height: 1.5; /* Standard text line height */
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* --- NEW STYLES for Truncation --- */
+
+.truncate-lines {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 10; /* The 10 lines you requested */
+    overflow: hidden;
+}
+
+.expand-button {
+    background: none;
+    border: none;
+    color: #8b5cf6; /* A purple, tailwind-like color */
+    cursor: pointer;
+    font-weight: 500;
+    padding: 4px 0;
+    margin-top: 8px;
+}
+.expand-button:hover {
+    text-decoration: underline;
+}
+
+/* UPDATED: Dark mode rule is no longer tied to .prose */
+.expand-button.dark-mode {
+    color: #a78bfa; /* Lighter purple for dark mode */
+}
+
+/* --- END NEW STYLES --- */
+
+:host ::ng-deep .dark-prose {
+    code {
+        background-color: #132a39 !important;
+    }
+}
+
+code::-webkit-scrollbar {
+    display: none !important;
+}
+
+:host ::ng-deep .prose {
+    /* NOTE: These .prose styles now *only* apply
+        to the AI's messages.
+      */
+    line-height: 0.6;
+    margin: 0.25rem 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    .prose {
+        line-height: 1;
+        margin: 0.5rem 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
+        font-weight: 500;
+        line-height: 1;
+    }
+    h1 {
+        font-size: 1.2rem;
+    }
+    h2 {
+        font-size: 1.1rem;
+    }
+    h3 {
+        font-size: 1.05rem;
+    }
+
+    p {
+        margin-bottom: 0.5em;
+        line-height: 1.5;
+    }
+
+    ul,
+    ol {
+        margin-left: 1.5em;
+        margin-bottom: 1em;
+        list-style-position: outside;
+        line-height: 1;
+    }
+    ul {
+        list-style-type: disc;
+    }
+    ol {
+        list-style-type: decimal;
+    }
+    li {
+        margin-bottom: 0.25em;
+        line-height: 1.5;
+    }
+
+    code {
+        background-color: #d4d9df;
+        padding: 0.1em 0.35em;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 0.85em;
+    }
+
+    :host ::ng-deep app-code-editor-canvas,
+    :host ::ng-deep app-table-template {
+        margin: 0.5rem 0;
+    }
+}
+
+:host ::ng-deep app-code-editor-canvas,
+:host ::ng-deep app-table-template {
+    margin: 1rem 0;
+}
+
+/* ---------------------------------------------------------
+
+       TIWARI JI: CUSTOM SYNTAX HIGHLIGHTING STYLES
+
+       This replaces the need for external CSS files.
+
+       --------------------------------------------------------- */
+
+/* 1. Dark Theme (Atom One Dark inspired) */
+
+pre,
+.code-header {
+    background: var(--mat-menu-container-color);
+}
+
+:host ::ng-deep code.dark-theme {
+    background: var(--mat-menu-container-color) !important; /* Let container bg show */
+
+    color: #abb2bf;
+}
+
+:host ::ng-deep code.dark-theme .hljs-comment,
+:host ::ng-deep code.dark-theme .hljs-quote {
+    color: #5c6370;
+    font-style: italic;
+}
+
+:host ::ng-deep code.dark-theme .hljs-doctag,
+:host ::ng-deep code.dark-theme .hljs-keyword,
+:host ::ng-deep code.dark-theme .hljs-formula {
+    color: #c678dd;
+}
+
+:host ::ng-deep code.dark-theme .hljs-section,
+:host ::ng-deep code.dark-theme .hljs-name,
+:host ::ng-deep code.dark-theme .hljs-selector-tag,
+:host ::ng-deep code.dark-theme .hljs-deletion,
+:host ::ng-deep code.dark-theme .hljs-subst {
+    color: #e06c75;
+}
+
+:host ::ng-deep code.dark-theme .hljs-literal {
+    color: #56b6c2;
+}
+
+:host ::ng-deep code.dark-theme .hljs-string,
+:host ::ng-deep code.dark-theme .hljs-regexp,
+:host ::ng-deep code.dark-theme .hljs-addition,
+:host ::ng-deep code.dark-theme .hljs-attribute,
+:host ::ng-deep code.dark-theme .hljs-meta-string {
+    color: #98c379;
+}
+
+:host ::ng-deep code.dark-theme .hljs-built_in,
+:host ::ng-deep code.dark-theme .hljs-class .hljs-title {
+    color: #e6c07b;
+}
+
+:host ::ng-deep code.dark-theme .hljs-attr,
+:host ::ng-deep code.dark-theme .hljs-variable,
+:host ::ng-deep code.dark-theme .hljs-template-variable,
+:host ::ng-deep code.dark-theme .hljs-type,
+:host ::ng-deep code.dark-theme .hljs-selector-class,
+:host ::ng-deep code.dark-theme .hljs-selector-attr,
+:host ::ng-deep code.dark-theme .hljs-selector-pseudo,
+:host ::ng-deep code.dark-theme .hljs-number {
+    color: #d19a66;
+}
+
+:host ::ng-deep code.dark-theme .hljs-symbol,
+:host ::ng-deep code.dark-theme .hljs-bullet,
+:host ::ng-deep code.dark-theme .hljs-link,
+:host ::ng-deep code.dark-theme .hljs-meta,
+:host ::ng-deep code.dark-theme .hljs-selector-id,
+:host ::ng-deep code.dark-theme .hljs-title {
+    color: #61aeee;
+}
+
+:host ::ng-deep code.dark-theme .hljs-emphasis {
+    font-style: italic;
+}
+
+:host ::ng-deep code.dark-theme .hljs-strong {
+    font-weight: bold;
+}
+
+/* 2. Light Theme (GitHub/VSCode Light inspired) */
+
+:host ::ng-deep code.light-theme {
+    background: transparent !important;
+
+    color: #24292e;
+}
+
+:host ::ng-deep code.light-theme .hljs-comment,
+:host ::ng-deep code.light-theme .hljs-quote {
+    color: #6a737d;
+    font-style: italic;
+}
+
+:host ::ng-deep code.light-theme .hljs-doctag,
+:host ::ng-deep code.light-theme .hljs-keyword,
+:host ::ng-deep code.light-theme .hljs-formula {
+    color: #d73a49;
+}
+
+:host ::ng-deep code.light-theme .hljs-section,
+:host ::ng-deep code.light-theme .hljs-name,
+:host ::ng-deep code.light-theme .hljs-selector-tag,
+:host ::ng-deep code.light-theme .hljs-deletion,
+:host ::ng-deep code.light-theme .hljs-subst {
+    color: #22863a;
+}
+
+:host ::ng-deep code.light-theme .hljs-literal {
+    color: #005cc5;
+}
+
+:host ::ng-deep code.light-theme .hljs-string,
+:host ::ng-deep code.light-theme .hljs-regexp,
+:host ::ng-deep code.light-theme .hljs-addition,
+:host ::ng-deep code.light-theme .hljs-attribute,
+:host ::ng-deep code.light-theme .hljs-meta-string {
+    color: #032f62;
+}
+
+:host ::ng-deep code.light-theme .hljs-class .hljs-title {
+    color: #6f42c1;
+}
+
+:host ::ng-deep code.light-theme .hljs-attr,
+:host ::ng-deep code.light-theme .hljs-variable,
+:host ::ng-deep code.light-theme .hljs-template-variable,
+:host ::ng-deep code.light-theme .hljs-type,
+:host ::ng-deep code.light-theme .hljs-selector-class,
+:host ::ng-deep code.light-theme .hljs-selector-attr,
+:host ::ng-deep code.light-theme .hljs-selector-pseudo,
+:host ::ng-deep code.light-theme .hljs-number {
+    color: #005cc5;
+}
+
+:host ::ng-deep code.light-theme .hljs-symbol,
+:host ::ng-deep code.light-theme .hljs-bullet,
+:host ::ng-deep code.light-theme .hljs-link,
+:host ::ng-deep code.light-theme .hljs-meta,
+:host ::ng-deep code.light-theme .hljs-selector-id,
+:host ::ng-deep code.light-theme .hljs-title {
+    color: #6f42c1;
+}

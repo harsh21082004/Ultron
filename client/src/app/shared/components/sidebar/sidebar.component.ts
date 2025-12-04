@@ -10,12 +10,14 @@ import { selectAuthUser } from '../../../store/auth/auth.selectors';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatList, MatListItem } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
-import { MatBottomSheet, MatBottomSheetModule } from '@angular/material/bottom-sheet';
+import { MatBottomSheet, MatBottomSheetConfig, MatBottomSheetModule } from '@angular/material/bottom-sheet';
 import { SearchChat } from '../search-chat/search-chat.component';
 import { MatMenuModule } from '@angular/material/menu';
 import * as ChatActions from '../../../store/chat/chat.actions';
 import { selectAllChats } from '../../../store/chat/chat.selectors';
 import { DrawerService } from '../../../core/services/drawer.service';
+import { SettingsDialogComponent } from '../settings/settings.component';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-sidebar-component',
@@ -37,15 +39,30 @@ export class SidebarComponent implements OnInit, OnDestroy {
   isMobileView = false;
 
   private userSubscription!: Subscription;
+  private dialog = inject(MatDialog);
 
   constructor(
-    private store: Store<AppState>, 
+    private store: Store<AppState>,
     private drawerService: DrawerService,
     private router: Router // TIWARI JI: Injected Router here
   ) {
     this.user$ = this.store.select(selectAuthUser);
     this.chats$ = this.store.select(selectAllChats);
     this.isMobileView = window.innerWidth <= 840;
+  }
+
+  openSettings(): void {
+    this.dialog.open(SettingsDialogComponent, {
+      panelClass: 'settings-dialog-overlay', // Critical for CSS styling
+      maxWidth: '100vw',
+      maxHeight: '95vh',
+      autoFocus: false
+    });
+
+    // If on mobile, close the drawer so user sees the dialog clearly
+    if (this.isMobile()) {
+      this.closeDrawer();
+    }
   }
 
   // listen to resize so the component can adapt
@@ -175,7 +192,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
   private _bottomSheet = inject(MatBottomSheet);
 
   openBottomSheet(): void {
-    this._bottomSheet.open(SearchChat);
+    const config: MatBottomSheetConfig = {
+      panelClass: 'search-chat-panel', // Apply a single class
+      // or panelClass: ['class1', 'class2'], // Apply multiple classes
+    };
+    this._bottomSheet.open(SearchChat, config);
   }
 
   logout(): void {

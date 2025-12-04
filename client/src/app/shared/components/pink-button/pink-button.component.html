@@ -1,11 +1,12 @@
-<button mat-fab extended 
-  [type]="type" 
-  [disabled]="disabled" 
-  [style.width.px]="width || null" 
-  [style.height.px]="height || null" 
-  [style.borderRadius.px]="borderRadius || null"
-  class="button"
+<button mat-fab extended [type]="type" [disabled]="disabled" [style.width.px]="width || null"
+  [style.height.px]="height || null" [style.borderRadius.px]="borderRadius || null" class="button"
   (click)="onButtonClick($event)">
-  <mat-icon [style.fontSize.px]="fontSize || null" class="icon">login</mat-icon>
-  <ng-content></ng-content>
+  @if(isLoading){
+  <app-loading-spinner [diameter]="height/1.75"></app-loading-spinner>
+  }@else{
+  <ng-container class="flex items-center">
+    <mat-icon [style.fontSize.px]="fontSize || null" class="icon">{{icon}}</mat-icon>
+    <ng-content></ng-content>
+  </ng-container>
+  }
 </button>

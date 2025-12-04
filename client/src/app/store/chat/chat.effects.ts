@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { catchError, map, switchMap, withLatestFrom, endWith, filter } from 'rxjs/operators';
+import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
 import * as ChatActions from './chat.actions';
 import { AppState } from '..';
@@ -159,6 +159,21 @@ export class ChatEffects {
       )
     )
   })
+
+  // --- TIWARI JI: NEW SEARCH EFFECT ---
+  // Calls the service when searchChats is dispatched
+  searchChats$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.searchChats),
+      debounceTime(300), // Wait 300ms to avoid spamming API while typing
+      switchMap(action => 
+        this.chatDbService.searchChats(action.query).pipe(
+          map(results => ChatActions.searchChatsSuccess({ results })),
+          catchError(error => of(ChatActions.searchChatsFailure({ error: error.message })))
+        )
+      )
+    );
+  });
 
   constructor() { }
 }

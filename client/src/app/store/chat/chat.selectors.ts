@@ -18,6 +18,17 @@ export const selectIsLoading = createSelector(
   (state) => state.isLoading
 );
 
+// --- TIWARI JI: NEW SELECTORS ---
+export const selectSearchResults = createSelector(
+  selectChatState,
+  (state) => state.searchResults
+);
+
+export const selectIsSearching = createSelector(
+  selectChatState,
+  (state) => state.isSearching
+);
+
 export const selectChatError = createSelector(
   selectChatState,
   (state) => state.error

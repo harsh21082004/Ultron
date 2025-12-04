@@ -53,6 +53,10 @@ export const streamStarted = createAction(
   '[Chat] Stream Started'
 );
 
+export const stopStream = createAction(
+  '[Chat] Stop Stream'
+);
+
 export const receiveStreamChunk = createAction(
   '[Chat] Receive Stream Chunk',
   props<{ chunk: string }>()
@@ -104,3 +108,19 @@ export const deleteAllChatsFailure = createAction(
   `[Chat] Delete All Chats Failure`,
   props<{error: string}>()
 )
+
+// --- TIWARI JI: NEW SEARCH ACTIONS ---
+export const searchChats = createAction(
+  '[Chat] Search Chats',
+  props<{ query: string }>()
+);
+
+export const searchChatsSuccess = createAction(
+  '[Chat] Search Chats Success',
+  props<{ results: any[] }>()
+);
+
+export const searchChatsFailure = createAction(
+  '[Chat] Search Chats Failure',
+  props<{ error: string }>()
+);

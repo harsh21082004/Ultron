@@ -37,7 +37,7 @@ export class ChatApiService {
     };
   }
 
-  constructor (){
+  constructor() {
     console.log(this.apiUrl);
   }
 
@@ -78,7 +78,11 @@ export class ChatApiService {
           subscriber.next(value);
         }
       }).catch(err => {
-        if (err.name !== 'AbortError') {
+        if (err.name === 'AbortError') {
+          // 3. Handle the "Stop" gracefully
+          console.log('Stream stopped by user.');
+          subscriber.complete();
+        } else {
           subscriber.error(err);
         }
       });

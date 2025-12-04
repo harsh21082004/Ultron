@@ -92,11 +92,78 @@ const deleteAllChats = async (req, res) => {
   }
 }
 
+const searchChats = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const userId = req.user.id;
+
+    if (!query || query.trim() === '') {
+      return res.status(200).json([]);
+    }
+
+    // Create a case-insensitive regular expression for the search
+    const searchRegex = new RegExp(query, 'i');
+
+    // Find chats where the title matches OR any message content matches
+    const chats = await Chat.find({
+      userId: userId,
+      $or: [
+        { title: searchRegex },
+        { 'messages.content.value': searchRegex }
+      ]
+    })
+    .select('title _id updatedAt messages') // We need messages to extract the snippet
+    .sort({ updatedAt: -1 })
+    .limit(20) // Limit results for performance
+    .lean(); // Convert Mongoose documents to plain JS objects
+
+    // Process results to create a clean response for the frontend
+    const results = chats.map(chat => {
+      let snippet = '';
+      
+      // 1. Try to find the specific message that matched the query
+      const matchingMessage = chat.messages.find(m => 
+        m.content && m.content.some(c => c.type === 'text' && searchRegex.test(c.value))
+      );
+
+      if (matchingMessage) {
+        // If found, extract that specific text block
+        const block = matchingMessage.content.find(c => c.type === 'text' && searchRegex.test(c.value));
+        snippet = block ? block.value : '';
+      } else {
+        // 2. If the match was in the Title (not body), or fallback, show the very last message
+        const lastMsg = chat.messages[chat.messages.length - 1];
+        const lastBlock = lastMsg?.content?.find(c => c.type === 'text');
+        snippet = lastBlock ? lastBlock.value : '';
+      }
+
+      // Truncate snippet if it's too long
+      if (snippet.length > 100) {
+        snippet = snippet.substring(0, 100) + '...';
+      }
+
+      return {
+        _id: chat._id,
+        title: chat.title,
+        lastMessage: snippet, // Frontend uses this property for the subtitle
+        updatedAt: chat.updatedAt
+      };
+    });
+
+    res.status(200).json(results);
+
+  } catch (error) {
+    console.error('Error searching chats:', error);
+    res.status(500).json({ message: 'Server error while searching chats.' });
+  }
+};
+
 
 module.exports = {
   saveChat,
   getAllChats,
   getChatById,
-  deleteAllChats
+  deleteAllChats,
+  searchChats
 };
 

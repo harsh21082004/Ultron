@@ -1,37 +1,37 @@
 <div class="min-h-screen flex items-center justify-center relative" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
     <!-- Glassmorphic card -->
     <div
-        class="w-[90%] max-w-md bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-lg relative z-10 login">
+        class="w-[90%] max-w-md bg-white/10  backdrop-blur-md border border-white/20 rounded-xl p-8 shadow-lg shadow-black relative z-10 login">
 
         <!-- Background circles -->
         <div class="circle circle-pink"></div>
         <div class="circle circle-purple"></div>
 
-        <h2 class="text-2xl font-bold text-white mb-2">Login</h2>
-        <p class="text-gray-300 text-sm mb-6">Welcome Back Please Login To Your Account</p>
+        <h2 class="text-2xl font-bold  mb-2">Login</h2>
+        <p class=" text-sm mb-6">Welcome Back Please Login To Your Account</p>
 
         <!-- Form -->
         <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
             <div class="mb-4">
-                <label class="block text-gray-300 mb-1" for="email">Email</label>
+                <label class="block  mb-1" for="email">Email</label>
                 <input id="email" type="email" formControlName="email"
-                    class="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+                    class="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 " />
             </div>
 
             <div class="mb-4">
-                <label class="block text-gray-300 mb-1" for="password">Password</label>
+                <label class="block  mb-1" for="password">Password</label>
                 <input id="password" type="password" formControlName="password"
-                    class="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+                    class="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 " />
             </div>
 
             <div class="flex items-center justify-between mb-6">
-                <label class="flex items-center space-x-2 text-gray-300">
+                <label class="flex items-center space-x-2 ">
                     <input type="checkbox" class="accent-blue-500" checked />
                     <span>Remember Me</span>
                 </label>
                 <a href="#" class="text-sm text-gray-400 hover:text-blue-400">Forgot Password?</a>
             </div>
-            <app-pink-button-component type="submit" [disabled]="loginForm.invalid">Login</app-pink-button-component>
+            <app-pink-button-component type="submit" [disabled]="loginForm.invalid" [height]='50' [width]="150" icon="login" [isLoading]="(isLoading$ | async)">Login</app-pink-button-component>
         </form>
 
         <!-- Signup -->

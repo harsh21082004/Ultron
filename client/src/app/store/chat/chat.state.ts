@@ -22,6 +22,8 @@ export interface ChatState {
   isLoading: boolean;
   currentChatId: string | null;
   error: string | null;
+  searchResults: any[];
+  isSearching: boolean;
 }
 
 export const initialChatState: ChatState = {
@@ -30,4 +32,6 @@ export const initialChatState: ChatState = {
   currentChatId: null,
   isLoading: false,
   error: null,
+  isSearching: false,
+  searchResults: []
 };

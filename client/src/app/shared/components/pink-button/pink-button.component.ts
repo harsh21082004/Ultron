@@ -2,11 +2,12 @@ import { Component, EventEmitter, Input, Output, CUSTOM_ELEMENTS_SCHEMA } from '
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { LoadingSpinner } from "../loading-spinner/loading-spinner";
 @Component({
   selector: 'app-pink-button-component',
   templateUrl: './pink-button.component.html',
   styleUrl: './pink-button.component.scss',
-  imports: [MatButtonModule, MatDividerModule, MatIconModule],
+  imports: [MatButtonModule, MatDividerModule, MatIconModule, LoadingSpinner],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class PinkButtonComponent {
@@ -21,6 +22,14 @@ export class PinkButtonComponent {
   @Input() fontSize: number = 0;
 
   @Input() disabled: boolean = false;
+
+  @Input() icon: string = '';
+
+  @Input() isLoading: any = false;
+
+  constructor(){
+    console.log(this.isLoading)
+  }
 
 
   /**

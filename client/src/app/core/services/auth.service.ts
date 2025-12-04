@@ -60,6 +60,7 @@ export class AuthService {
    */
   logout(): void {
     localStorage.removeItem('token');
+    this.router.navigate(['/'])
   }
 
   // --- Session Re-hydration ---

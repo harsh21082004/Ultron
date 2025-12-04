@@ -53,7 +53,7 @@
       </mat-menu>
       } @if( !(user$ | async) && !(loading$ | async)) {
       <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10"
-        [fontSize]="isMobileView ? 13 : 16">
+        [fontSize]="isMobileView ? 13 : 16" icon="login">
         <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
       </app-pink-button-component>
       }

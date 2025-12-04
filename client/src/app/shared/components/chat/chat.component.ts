@@ -147,6 +147,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     return message._id;
   }
 
+  public stopGeneration(): void {
+    // this.store.dispatch(ChatActions.stopStream());
+  }
+
   public sendMessage(): void {
     const message = this.chatForm.value.message?.trim();
     if (message) {
