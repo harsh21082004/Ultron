@@ -28,20 +28,8 @@
         {{ errorMessage }}
       </div>
 
-      <!-- Submit button -->
-      <app-pink-button-component type="submit">
-        <span *ngIf="!(loading$ | async); else loadingSpinner">Sign Up</span>
-        <ng-template #loadingSpinner>
-          <div class="flex items-center justify-center">
-             <!-- Loading spinner SVG -->
-             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Creating Account...
-          </div>
-        </ng-template>
-      </app-pink-button-component>
+      <app-pink-button-component type="submit" [disabled]="signupForm.invalid" [height]='50' [width]="150"
+                icon="login" [isLoading]="(loading$ | async)">Signup</app-pink-button-component>
     </form>
 
     <!-- Divider -->
@@ -71,37 +59,3 @@
     </p>
   </div>
 </div>
-
-<style>
-    .login {
-        position: relative;
-        /* keeps circles inside relative container */
-    }
-
-    .circle {
-        position: absolute;
-        width: 250px;
-        height: 250px;
-        border-radius: 50%;
-        opacity: 0.9;
-        filter: blur(60px);
-        /* soft glow */
-        z-index: -1;
-    }
-
-    .circle-pink {
-        background: radial-gradient(circle, #5048ec, #0a02a1);
-        top: -125px;
-        /* half out */
-        right: -125px;
-        /* half out */
-    }
-
-    .circle-purple {
-        background: radial-gradient(circle, #8b5cf6, #6366f1);
-        bottom: -125px;
-        /* half out */
-        left: -125px;
-        /* half out */
-    }
-</style>

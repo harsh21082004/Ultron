@@ -1,54 +1,72 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import * as AuthActions from '../../store/auth/auth.actions';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { SnackbarService } from '../../core/services/snackbar.service';
 
 @Component({
   selector: 'app-auth-callback-component',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="min-h-screen flex items-center justify-center bg-black text-white">
-      <div class="flex items-center gap-4">
-        <!-- Loading Spinner SVG -->
-        <svg class="animate-spin h-8 w-8 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="text-lg">Finalizing your login, please wait...</p>
-      </div>
-    </div>
-  `
+  imports: [CommonModule, MatIconModule, MatButtonModule],
+  templateUrl: './auth-callback-component.html',
+  styleUrls: ['./auth-callback-component.scss']
 })
 export class AuthCallbackComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private store = inject(Store);
+  private router = inject(Router);
+  private snackbar = inject(SnackbarService);
 
-  constructor(
-    private route: ActivatedRoute,
-    private store: Store,
-    private router: Router
-  ) { }
+  status: 'loading' | 'success' | 'error' = 'loading';
+  message = 'Finalizing your secure login...';
 
   ngOnInit(): void {
-    // 1. Get the token from the URL's query parameters.
+    // 1. Get the token from the URL
     const token = this.route.snapshot.queryParamMap.get('token');
 
     if (token) {
-      // 2. If a token exists, save it to localStorage immediately.
-      localStorage.setItem('token', token);
-
-      // 3. Dispatch the action to initialize the session.
-      //    Your existing initSession$ effect will now take over. It will use the
-      //    token we just saved to fetch user details and log them in.
-      this.store.dispatch(AuthActions.initSession());
-
+      // 2. Success Case
+      this.handleSuccess(token);
     } else {
-      // If for some reason there's no token, something went wrong.
-      // Send the user back to the login page with an error.
-      // (This part can be enhanced with a proper error message in the store).
-      console.error("Auth Callback: No token found in URL.");
-      this.router.navigate(['/login']);
+      // 3. Error Case
+      this.handleError();
     }
   }
-}
 
+  private handleSuccess(token: string): void {
+    try {
+      localStorage.setItem('token', token);
+      
+      // Update UI to success state
+      this.status = 'success';
+      this.message = 'Login Successful! Redirecting...';
+      
+      // Dispatch action to load user details
+      this.store.dispatch(AuthActions.initSession());
+
+      // Show a snackbar
+      this.snackbar.open('Welcome back to Ultron!', 'Dismiss', 'center', 'bottom', 'success');
+
+      // Small delay so user sees the success state before redirecting
+      setTimeout(() => {
+        this.router.navigate(['/']);
+      }, 1500);
+
+    } catch (e) {
+      this.handleError();
+    }
+  }
+
+  private handleError(): void {
+    this.status = 'error';
+    this.message = 'Authentication failed. Please try again.';
+    this.snackbar.open('Login failed. No token received.', 'Retry', 'center', 'bottom', 'error');
+  }
+
+  retryLogin(): void {
+    this.router.navigate(['/login']);
+  }
+}

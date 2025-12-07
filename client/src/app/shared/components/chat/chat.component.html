@@ -1,191 +1,101 @@
-<!-- This outer check resolves the 'messages' object once, fixing strict template errors -->
 @if (messages$ | async; as messages) {
-<!-- Main container now supports light and dark themes -->
 <div class="flex flex-col h-[100%] w-full relative overflow-hidden">
 
-  <app-header-component class="absolute top-0 w-[100%]"></app-header-component>
+  <!-- Fixed Header -->
+  <app-header-component class="absolute top-0 w-[100%] z-20"></app-header-component>
 
-  <!-- This container holds the scrolling chat messages -->
-  <div #chatContainer class="w-full chat-container overflow-y-auto mt-15 h-full">
-
-    <!-- This inner div is for centering the content -->
-    <div class="w-full max-w-4xl mx-auto p-6 space-y-6">
-      <!-- Welcome screen or chat messages -->
+  <!-- Scrollable Message Area -->
+  <div #chatContainer class="w-full chat-container overflow-y-auto mt-15 h-full z-0">
+    <div class="w-full max-w-4xl mx-auto p-6 space-y-6 pb-24 sm:pb-6">
+      
+      <!-- 1. EMPTY STATE (Delegated to Child Component) -->
       @if (messages.length === 0 && !(isLoading$ | async)) {
-      <div class="flex flex-col items-center justify-center h-full text-center">
-        <img src="assets/images/ultron.gif" alt="Ultron" [ngClass]="isMobileView ? 'w-14' : 'w-24'">
-        @if (user$ | async; as user) {
-        <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good Evening,
-          {{ user.name }}.</h1>
-        } @else {
-        <h1 class="font-bold text-black dark:text-gray-100" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">Good
-          Evening.</h1>
-        }
-        <h2 class="font-semibold" [ngClass]="isMobileView ? 'text-lg' : 'text-3xl'">Can I help you with anything?</h2>
-      </div>
-      @if ((messages.length === 0) && !(isLoading$ | async)) {
-      <div class="flex flex-wrap gap-3 sm:gap-4 justify-center text-left mt-4">
-        @for (prompt of promptSuggestions; track prompt.title) {
-        <button (click)="sendSuggestion(prompt.title)" class="bg-gray-100 dark:bg-[#162731] py-1.5 sm:py-2 px-3 sm:px-5 rounded-full
-             hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-center
-             w-fit max-w-[180px] sm:max-w-[200px]">
-          <h3 class="font-semibold text-[12px] sm:text-[13px] truncate whitespace-nowrap">{{ prompt.title }}</h3>
-          <p class="text-[10px] sm:text-[11px] truncate whitespace-nowrap ml-1 text-gray-500">{{ prompt.description }}
-          </p>
-        </button>
-        }
-      </div>
+        <app-chat-empty-state
+          [user]="user$ | async"
+          [isMobileView]="isMobileView"
+          [suggestions]="promptSuggestions"
+          (suggestionClicked)="handleSuggestionClick($event)">
+        </app-chat-empty-state>
+      } 
+      
+      <!-- 2. MESSAGES LIST -->
+      @else {
+        @for (message of messages; track trackByMessage($index, message)){
+          <div #messageElement class="flex items-start gap-2 group" 
+               [class.justify-end]="message.sender === 'user'"
+               [class.flex-col]="message.sender === 'ai'" 
+               [class.items-start]="message.sender === 'ai'">
 
-      }
-      } @else {
-      <!-- 
-        --- MODIFIED: ---
-        1. Using 'track trackByMessage' for performance
-        2. Added '[@messageAnimation]' for fade-in effect
-      -->
-      @for (message of messages; track message._id){
-      <div #messageElement class="flex items-start gap-2 group" [class.justify-end]="message.sender === 'user'"
-        [class.flex-col]="message.sender === 'ai'" [class.items-start]="message.sender === 'ai'">
+            <!-- User Actions (Edit/Copy) - Only visible on hover -->
+            @if (message.sender === 'user') {
+              <div class="flex-shrink-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
+                <button mat-icon-button matTooltip="Edit Message" (click)="onEditMessage(message)" class="action-btn">
+                  <mat-icon class="small-icon">edit</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Copy Text" (click)="onCopyMessage(message)" class="action-btn">
+                  <mat-icon class="small-icon">content_copy</mat-icon>
+                </button>
+              </div>
+            }
 
-        <!-- 
-          --- NEW: Edit/Copy buttons for User Messages ---
-          These buttons appear on the left on hover
-        -->
-        @if (message.sender === 'user') {
-        <div class="flex-shrink-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
-          <button mat-icon-button matTooltip="Edit Message" (click)="onEditMessage(message)"
-            class="w-5 h-5 leading-5 flex justify-center items-center">
-            <mat-icon class="text-gray-500 dark:text-gray-400 justify-center items-center"
-              style="font-size: 17px; display: flex !important;">edit</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Copy Text" (click)="onCopyMessage(message)"
-            class="w-5 h-5 leading-5 flex justify-center items-center">
-            <mat-icon class="text-gray-500 dark:text-gray-400 justify-center items-center"
-              style="font-size: 17px; display: flex !important;">content_copy</mat-icon>
-          </button>
-        </div>
-        }
+            <!-- AI Status Icon/Loader -->
+            @if (message.sender === 'ai') {
+              <div class="relative w-full h-11 flex-shrink-0 flex items-center">
+                @if (message.isStreaming) {
+                  <div class="absolute w-auto h-full">
+                    <ultron-loader-component class="h-full w-auto flex"></ultron-loader-component>
+                  </div>
+                  <span class="ml-14 text-sm text-gray-500 animate-pulse">Thinking...</span>
+                }
+                <div class="absolute inset-0 w-6 h-6 rounded-full flex items-center justify-center ai-response">
+                  <img src="assets/images/logo.svg" alt="Ultron Logo">
+                </div>
+              </div>
+            }
 
-        <!-- ORIGINAL AI Block -->
-        @if (message.sender === 'ai') {
-        <div class="relative w-full h-11 flex-shrink-0 flex items-center">
-          @if (message.isStreaming) {
-          <div class="absolute w-auto h-full">
-            <ultron-loader-component class="h-full w-auto flex"></ultron-loader-component>
+            <!-- Message Bubble Content -->
+            <div class="max-w-4xl py-2 px-4" 
+                 [ngClass]="{
+                   'user-bubble': message.sender === 'user',
+                   'ai-bubble w-[100%]': message.sender === 'ai'
+                 }">
+                 
+              <!-- Render Markdown/Code blocks -->
+              @for (block of message.content; track $index) {
+                <app-content-renderer-component 
+                  [content]="block.value" 
+                  [sender]="message.sender"
+                  class="text-base">
+                </app-content-renderer-component>
+              }
+
+              <!-- AI Actions (Like/Dislike/Copy) - Only visible on hover/streaming -->
+              @if (message.sender === 'ai') {
+                <div class="flex-shrink-0 flex group-hover:opacity-100 transition-opacity mt-2"
+                     [class.opacity-0]="messages[messages.length - 1]._id !== message._id && !message.isStreaming">
+                  <button mat-icon-button class="action-btn"><mat-icon class="small-icon">thumb_up</mat-icon></button>
+                  <button mat-icon-button class="action-btn"><mat-icon class="small-icon">thumb_down</mat-icon></button>
+                  <button mat-icon-button (click)="onCopyMessage(message)" class="action-btn"><mat-icon class="small-icon">content_copy</mat-icon></button>
+                  <button mat-icon-button class="action-btn"><mat-icon class="small-icon">share</mat-icon></button>
+                  <button mat-icon-button class="action-btn"><mat-icon class="small-icon">more_vert</mat-icon></button>
+                </div>
+              }
+            </div>
           </div>
-          <span class="ml-14 ">Thinking...</span>
-          }
-          <div
-            class="absolute inset-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm ai-response">
-            <img src="assets/images/logo.svg" alt="">
-          </div>
-        </div>
         }
-
-        <!-- ORIGINAL Message Bubble -->
-        <div class="max-w-4xl  py-2 px-4 " [ngClass]="{
-                  'user-bubble': message.sender === 'user',
-                  'rounded-t-2xl w-[100%] rounded-br-2xl rounded-bl-md': message.sender === 'ai'
-                }" [ngStyle]="message.sender === 'ai' ? {'background-color': 'transparent !important'} : null">
-          @for (block of message.content; track $index) {
-          <!-- Make sure your selector matches your component (e.g., app-content-renderer-component) -->
-          <app-content-renderer-component [content]="block.value" [sender]="message.sender"
-            class="text-base"></app-content-renderer-component>
-          }
-          <!-- 
-            --- NEW: AI Toolbar ---
-          -->
-          @if (message.sender === 'ai') {
-          <div class="flex-shrink-0 flex group-hover:opacity-100 transition-opacity"
-            [class.opacity-0]="messages[messages.length - 1]._id !== message._id && !message.isStreaming">
-            <button mat-icon-button matTooltip="Good Response"
-              class="w-5 h-5 leading-5 flex justify-center items-center">
-              <mat-icon class="text-gray-500 dark:text-gray-400 flex justify-center items-center"
-                style="font-size: 17px; display: flex !important;">thumb_up</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="Bad Response"
-              class="w-5 h-5 leading-5 flex justify-center items-center">
-              <mat-icon class="text-gray-500 dark:text-gray-400 flex justify-center items-center"
-                style="font-size: 17px; display: flex !important;">thumb_down</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="Copy Text" (click)="onCopyMessage(message)"
-              class="w-5 h-5 leading-5 flex justify-center items-center">
-              <mat-icon class="text-gray-500 dark:text-gray-400 flex justify-center items-center"
-                style="font-size: 17px; display: flex !important;">content_copy</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="Share" class="w-5 h-5 leading-5 flex justify-center items-center">
-              <mat-icon class="text-gray-500 dark:text-gray-400 flex justify-center items-center"
-                style="font-size: 17px; display: flex !important;">share</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="More" class="w-5 h-5 leading-5 flex justify-center items-center">
-              <mat-icon class="text-gray-500 dark:text-gray-400 flex justify-center items-center"
-                style="font-size: 17px; display: flex !important;">more_vert</mat-icon>
-            </button>
-          </div>
-          }
-        </div>
-      </div>
-      }
       }
     </div>
   </div>
 
-  <div class="w-full max-w-4xl mx-auto p-4 pt-0 sticky bottom-0">
-
-    <form [formGroup]="chatForm" (ngSubmit)="sendMessage()" class="chat-input-content rounded-2xl p-2 mt-4 sm:p-3">
-      <textarea #chatTextarea formControlName="message" rows="1" placeholder="Message AI Chat..."
-        class="w-full textarea bg-transparent resize-none px-3 sm:px-4 placeholder-gray-500 focus:outline-none"
-        (keydown)="handleEnterPress($event)" appAutoGrow [appAutoGrowMaxLines]="4"></textarea>
-
-      <div class="flex items-center justify-between mt-2">
-        <div class="flex items-center gap-1.5 sm:gap-2">
-          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
-            <mat-icon class="text-[20px] sm:text-[24px]">mic</mat-icon>
-          </button>
-          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
-            <mat-icon class="text-[20px] sm:text-[24px] font-extrabold rotate-45">attach_file</mat-icon>
-          </button>
-          <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2">
-            <mat-icon class="text-[20px] sm:text-[24px]">search</mat-icon>
-          </button>
-        </div>
-        <div class="right flex justify-center items-center gap-3">
-          <button [matMenuTriggerFor]="model" matButton class="p-2 flex justify-center items-center">
-            Pro
-            <mat-icon class="text-[20px] sm:text-[24px] font-extrabold">keyboard_arrow_down</mat-icon>
-          </button>
-          <mat-menu #model="matMenu" class="min-w-[250px] px-0 py-1 !rounded-2xl profile-menu">
-            <div class="flex flex-col justify-start items-start">
-              <span class="px-3">Select Model</span>
-              <div class="down mt-2 w-full">
-                <button mat-menu-item>Thinking
-                  <p class="text-xs font-normal text-gray-400">deep thinking for complex problems</p>
-                </button>
-                <button mat-menu-item>Fast
-                  <p class="text-xs font-normal text-gray-400">responds quickly</p>
-                </button>
-                <button mat-menu-item>Light
-                  <p class="text-xs font-normal text-gray-400">fast for easy problems</p>
-                </button>
-              </div>
-            </div>
-          </mat-menu>
-          @if (isLoading$ | async) {
-          <button type="button" matMiniFab (click)="stopGeneration()" matTooltip="Stop generating"
-            class="bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white !w-10 !h-10 sm:!w-11 sm:!h-11 shadow-none transition-colors">
-            <!-- Stop Icon (Square) -->
-            <mat-icon class="text-[20px] sm:text-[24px]">stop</mat-icon>
-          </button>
-          } @else {
-          <button type="submit" matMiniFab class="bg-gray-200 dark:bg-gray-700 hover:bg-pink-600 disabled:bg-gray-300 dark:disabled:bg-gray-800
-                !w-10 !h-10 sm:!w-11 sm:!h-11" [disabled]="chatForm.invalid" aria-label="Send message">
-            <img src="assets/images/send.svg" alt="" class="w-5 h-5 sm:w-6 sm:h-6 invert dark:invert-[0]">
-          </button>
-          }
-        </div>
-      </div>
-    </form>
-
+  <!-- 3. INPUT AREA (Fixed Bottom - Delegated to Child Component) -->
+  <div class="w-full max-w-4xl mx-auto p-4 pt-0 flex-shrink-0 z-10 bg-white/0">
+    <app-chat-input
+      [isLoading]="(isLoading$ | async) ?? false"
+      [isStreaming]="(isStreaming$ | async) ?? false"
+      (sendMessage)="handleSendMessage($event)"
+      (stopGeneration)="handleStopGeneration()">
+    </app-chat-input>
   </div>
+
 </div>
 }

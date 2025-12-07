@@ -1,6 +1,6 @@
-@use '@angular/material' as mat;
+@use "@angular/material" as mat;
 @use "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap");
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -11,16 +11,37 @@ $blue-palette: mat.$blue-palette;
 $red-palette: mat.$red-palette;
 
 html {
-  @include mat.theme((
-    color: (primary: $azure-palette, tertiary: $red-palette),
-    typography: Roboto,
-    density: 0,
-  ));
+  @include mat.theme(
+    (
+      color: (
+        primary: $azure-palette,
+        tertiary: $red-palette
+      ),
+      typography: Roboto,
+      density: 0
+    )
+  );
 }
 
 // Define Light and Dark themes
-$light-theme: mat.define-theme((color: (theme-type: light, primary: $azure-palette, tertiary: $blue-palette)));
-$dark-theme: mat.define-theme((color: (theme-type: dark, primary: $azure-palette, tertiary: $blue-palette)));
+$light-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: $azure-palette,
+      tertiary: $blue-palette
+    )
+  )
+);
+$dark-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: dark,
+      primary: $azure-palette,
+      tertiary: $blue-palette
+    )
+  )
+);
 
 // Apply default light theme
 @include mat.all-component-themes($light-theme);
@@ -58,12 +79,13 @@ html {
 }
 
 // --- GLOBAL RESET & LAYOUT FIXES ---
-html, body {
-  height: 100%;       /* Crucial for full height */
+html,
+body {
+  height: 100%; /* Crucial for full height */
   margin: 0;
   padding: 0;
   font-family: "Alan Sans", sans-serif;
-  overflow: hidden;   /* TIWARI JI: This stops the whole page from scrolling */
+  overflow: hidden; /* TIWARI JI: This stops the whole page from scrolling */
 }
 
 body {
@@ -78,18 +100,56 @@ body {
   background-color: rgba(0, 0, 0, 0.336);
 }
 
-.search-chat-panel{
+.search-chat-panel {
   max-width: 500px !important;
   width: 90% !important;
 }
 
-.search-chat-panel .mat-bottom-sheet-container{
+.search-chat-panel .mat-bottom-sheet-container {
   padding: 0 !important;
   background-color: transparent !important;
   width: 100% !important;
   min-width: 0 !important;
 }
 
-.search-chat-panel .mat-bottom-sheet-container::-webkit-scrollbar{
-display: none !important;
+.search-chat-panel .mat-bottom-sheet-container::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* --- Custom Glass Snackbar Styles --- */
+
+.glass-snackbar .mdc-snackbar__surface{
+  padding: 0 !important;
+  height: 100% !important;
+}
+.glass-snackbar {
+  max-width: 400px !important;
+  max-height: 60px !important;
+
+
+
+  .mat-mdc-snack-bar-container {
+    /* Make the outer container transparent so we can style the inner surface */
+    --mdc-snackbar-container-color: transparent;
+    --mat-mdc-snack-bar-button-color: #ec4899; /* Pink text for action button */
+
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .mat-mdc-snackbar-surface {
+    /* The actual glass card style */
+    background: var(--mat-menu-container-color) !important; /* Matches your light/dark theme */
+    color: var(--mat-sys-on-surface) !important;
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(128, 128, 128, 0.15); /* Subtle border for glass effect */
+    border-radius: 12px !important;
+    padding: 8px 12px !important;
+
+    /* Soft shadow to make it float */
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3) !important;
+  }
 }

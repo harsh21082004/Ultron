@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime } from 'rxjs/operators';
+import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime, takeUntil } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
 import * as ChatActions from './chat.actions';
 import { AppState } from '..';
@@ -40,9 +40,17 @@ export class ChatEffects {
       ofType(ChatActions.sendMessage),
       switchMap(action =>
         this.chatApiService.sendMessageStream(action.message, action.chatId).pipe(
+          // 1. Process incoming chunks
           map(chunk => ChatActions.receiveStreamChunk({ chunk })),
-          // When the stream completes, dispatch the streamComplete action with the chatId.
+          
+          // 2. STOP LOGIC: If 'stopStream' is dispatched, unsubscribe immediately.
+          // This triggers the cleanup function in ChatApiService (controller.abort()).
+          takeUntil(this.actions$.pipe(ofType(ChatActions.stopStream))),
+          
+          // 3. COMPLETION: Whether finished naturally OR stopped manually, 
+          // fire streamComplete so we can save the (possibly partial) response.
           endWith(ChatActions.streamComplete({ chatId: action.chatId })),
+          
           catchError(error => of(ChatActions.streamFailure({ error: error.message })))
         )
       )

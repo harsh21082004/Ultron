@@ -24,6 +24,7 @@ export interface ChatState {
   error: string | null;
   searchResults: any[];
   isSearching: boolean;
+  isStreaming: boolean;
 }
 
 export const initialChatState: ChatState = {
@@ -33,5 +34,6 @@ export const initialChatState: ChatState = {
   isLoading: false,
   error: null,
   isSearching: false,
-  searchResults: []
+  searchResults: [],
+  isStreaming: false
 };

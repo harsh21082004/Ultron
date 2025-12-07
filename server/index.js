@@ -13,6 +13,8 @@ connectDB();
 
 const app = express();
 
+app.enable('trust proxy');
+
 // Add cors options for production and development
 const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:4200',

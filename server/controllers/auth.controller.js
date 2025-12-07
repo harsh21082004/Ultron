@@ -94,21 +94,28 @@ const socialLoginCallback = (req, res) => {
   // Passport attaches the authenticated user object to `req.user`
   const user = req.user;
 
+  console.log(user)
+
   // 1. Create a JWT payload
   const payload = {
     _id: user._id,
     name: user.name,
-    email: user.email
+    email: user.email,
+    profilePic: user.profilePic
   };
 
-  // 2. Sign the JWT with your secret key
+  // 2. Sign the JWT
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '1d' // Token expires in 1 day
+    expiresIn: '1d'
   });
 
-  // 3. Redirect the user back to the Angular frontend's callback URL,
-  //    attaching the token as a query parameter.
-  res.status(200).json({ user, token });
+  // 3. TIWARI JI: Determine the Frontend URL based on environment
+  // If running on Vercel, process.env.FRONTEND_URL should be set.
+  // If local, fallback to localhost:4200
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+
+  // 4. Redirect to the Angular "auth/callback" route with the token
+  res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
 };
 
 module.exports = { signup, login, getUserDetails, socialLoginCallback };

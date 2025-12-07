@@ -18,6 +18,11 @@ export const selectIsLoading = createSelector(
   (state) => state.isLoading
 );
 
+export const selectIsStreaming = createSelector(
+  selectChatState,
+  (state) => state.isStreaming
+);
+
 // --- TIWARI JI: NEW SELECTORS ---
 export const selectSearchResults = createSelector(
   selectChatState,

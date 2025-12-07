@@ -1,0 +1,64 @@
+<form [formGroup]="chatForm" (ngSubmit)="onSubmit()" class="chat-input-content rounded-2xl p-2 mt-4 sm:p-3 bg-[var(--mat-menu-container-color)] shadow-lg">
+  
+  <textarea #chatTextarea formControlName="message" rows="1" placeholder="Message AI Chat..."
+    class="w-full textarea bg-transparent resize-none px-3 sm:px-4 placeholder-gray-500 focus:outline-none text-[var(--mat-sys-on-surface)]"
+    (keydown)="handleEnterPress($event)" appAutoGrow [appAutoGrowMaxLines]="4"></textarea>
+
+  <div class="flex items-center justify-between mt-2">
+    <!-- Left Actions -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
+        <mat-icon class="text-[20px] sm:text-[24px]">mic</mat-icon>
+      </button>
+      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
+        <mat-icon class="text-[20px] sm:text-[24px] font-extrabold rotate-45">attach_file</mat-icon>
+      </button>
+      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
+        <mat-icon class="text-[20px] sm:text-[24px]">search</mat-icon>
+      </button>
+    </div>
+
+    <!-- Right Actions -->
+    <div class="right flex justify-center items-center gap-3">
+      <!-- Model Selector -->
+      <button [matMenuTriggerFor]="model" matButton class="p-2 flex justify-center items-center text-[var(--mat-sys-on-surface)]">
+        Pro
+        <mat-icon class="text-[20px] sm:text-[24px] font-extrabold">keyboard_arrow_down</mat-icon>
+      </button>
+      
+      <mat-menu #model="matMenu" class="min-w-[250px] px-0 py-1 !rounded-2xl profile-menu">
+        <div class="flex flex-col justify-start items-start">
+          <span class="px-3 py-2 font-semibold">Select Model</span>
+          <div class="w-full">
+            <button mat-menu-item>
+              <span class="block font-medium">Thinking</span>
+              <span class="block text-xs text-gray-400">Deep thinking for complex problems</span>
+            </button>
+            <button mat-menu-item>
+              <span class="block font-medium">Fast</span>
+              <span class="block text-xs text-gray-400">Responds quickly</span>
+            </button>
+            <button mat-menu-item>
+              <span class="block font-medium">Light</span>
+              <span class="block text-xs text-gray-400">Fast for easy problems</span>
+            </button>
+          </div>
+        </div>
+      </mat-menu>
+
+      <!-- Send / Stop Button -->
+      @if (isLoading || isStreaming) {
+        <button type="button" matMiniFab (click)="onStop()" matTooltip="Stop generating"
+          class="bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white !w-10 !h-10 sm:!w-11 sm:!h-11 shadow-none transition-colors">
+          <mat-icon class="text-[20px] sm:text-[24px]">stop</mat-icon>
+        </button>
+      } @else {
+        <button type="submit" matMiniFab class="bg-gray-200 dark:bg-gray-700 hover:bg-pink-600 disabled:bg-gray-300 dark:disabled:bg-gray-800
+            !w-10 !h-10 sm:!w-11 sm:!h-11 transition-colors" 
+            [disabled]="chatForm.invalid" aria-label="Send message">
+          <img src="assets/images/send.svg" alt="" class="w-5 h-5 sm:w-6 sm:h-6 invert dark:invert-[0]">
+        </button>
+      }
+    </div>
+  </div>
+</form>

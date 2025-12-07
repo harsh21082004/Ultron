@@ -43,6 +43,7 @@ export const chatReducer = createReducer(
   on(ChatActions.sendMessage, (state, { message, chatId }) => ({
     ...state,
     isLoading: true, // Show loading until stream starts
+    isStreaming: true,
     error: null,
     currentChatId: chatId, // Set chat ID when sending
     messages: [
@@ -59,6 +60,7 @@ export const chatReducer = createReducer(
   on(ChatActions.streamStarted, (state) => ({
     ...state,
     isLoading: true, // Stop loading, stream has begun
+    isStreaming: true,
     messages: [
       ...state.messages,
       { 
@@ -111,6 +113,7 @@ export const chatReducer = createReducer(
     return {
       ...state,
       isLoading: false,
+      isStreaming: false,
       messages: [
         ...state.messages.slice(0, -1),
         { 

@@ -1,0 +1,14 @@
+.chat-input-content {
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05); /* Subtle shadow lift */
+  border: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.textarea {
+  min-height: 48px;
+  line-height: 1.5;
+}
+
+/* Hide scrollbar on textarea */
+.textarea::-webkit-scrollbar {
+  display: none;
+}

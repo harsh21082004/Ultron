@@ -1,0 +1,31 @@
+.login {
+    position: relative;
+    /* keeps circles inside relative container */
+}
+
+.circle {
+    position: absolute;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    opacity: 0.9;
+    filter: blur(60px);
+    /* soft glow */
+    z-index: -1;
+}
+
+.circle-pink {
+    background: radial-gradient(circle, #5048ec, #0a02a1);
+    top: -125px;
+    /* half out */
+    right: -125px;
+    /* half out */
+}
+
+.circle-purple {
+    background: radial-gradient(circle, #8b5cf6, #6366f1);
+    bottom: -125px;
+    /* half out */
+    left: -125px;
+    /* half out */
+}

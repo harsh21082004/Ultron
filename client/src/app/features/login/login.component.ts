@@ -54,4 +54,18 @@ export class LoginComponent implements OnInit {
       this.store.dispatch(AuthActions.login({ email, password }));
     }
   }
+
+  /**
+     * Dispatches the action to initiate the Google OAuth flow.
+     */
+  onGoogleLogin(): void {
+    this.store.dispatch(AuthActions.loginWithGoogle());
+  }
+
+  /**
+   * Dispatches the action to initiate the GitHub OAuth flow.
+   */
+  onGitHubLogin(): void {
+    this.store.dispatch(AuthActions.loginWithGitHub());
+  }
 }

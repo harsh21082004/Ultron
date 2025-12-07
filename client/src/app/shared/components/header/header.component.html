@@ -14,7 +14,7 @@
     <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
     <span class="text-xl">Ultron</span>
   </div>
-  <div class="flex items-center gap-2 right">
+  <div class="flex items-center gap-1 right">
     <button matIconButton aria-label="icon button with a vertical three dot icon" class="dark-button"
       (click)="themeService.toggleTheme()">
       <mat-icon class="darkicon">{{isDarkMode() ? light_mode : dark_mode}}</mat-icon>
@@ -25,7 +25,7 @@
     </button> -->
     <div class="flex-shrink-0">
       @if (user$ | async; as user) {
-      <button [matMenuTriggerFor]="profile" matButton class="p-2">
+      <button [matMenuTriggerFor]="profile" matButton class="p-1">
         <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
           <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
             alt="User Profile Picture" />
@@ -40,7 +40,7 @@
           <span>{{user.email}}</span>
           <div class="relative p-2 mt-5 rounded-md w-full flex flex-col items-center gap-3 cursor-pointer">
             <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
-              alt="User Profile Picture" />
+              alt="User Profile Picture" referrerpolicy="no-referrer" loading="lazy" />
             <div class="nav-text">
               <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
             </div>

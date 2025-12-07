@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import { AuthResponse } from '../../shared/models/auth-response.model';
 import { User } from '../../shared/models/user.model';
 import { envType } from '../../shared/models/environment';
+import { SnackbarService } from './snackbar.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,6 +19,7 @@ export class AuthService {
 
   // Use the API URL from your environment file
   private apiUrl: string = `${(environment as envType).apiUrl}/auth`;
+  private snackbar = inject(SnackbarService);
 
   constructor (){
     console.log(this.apiUrl + '/login');
@@ -60,7 +62,8 @@ export class AuthService {
    */
   logout(): void {
     localStorage.removeItem('token');
-    this.router.navigate(['/'])
+    this.router.navigate(['/']);
+    this.snackbar.open('Successfully logged out!', 'Dismiss', 'center', 'bottom', 'success');
   }
 
   // --- Session Re-hydration ---
