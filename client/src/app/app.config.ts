@@ -1,4 +1,4 @@
-import { ApplicationConfig, importProvidersFrom, isDevMode } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, isDevMode, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
@@ -42,6 +42,8 @@ export const appConfig: ApplicationConfig = {
 
     // 7. Add animation
     provideAnimationsAsync(), 
+    provideBrowserGlobalErrorListeners(),
+    provideZonelessChangeDetection(),
   ],
 };
 
