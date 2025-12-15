@@ -22,7 +22,8 @@ Ignore git
 .git
 .gitignore
 
-If you have a separate client folder, ensure node_modules isn't uploaded to the backend function
+Ignore ALL node_modules in any subdirectory to prevent bloating the function
 
-node_modules
-client/node_modules
+This ensures your Node.js backend dependencies are not bundled with the Python function
+
+**/node_modules
