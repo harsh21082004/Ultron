@@ -62,7 +62,7 @@
 
             <!-- Collapsible Content (Modern border-left style) -->
             <div
-              class="ml-2.5 pl-4 border-l-2 border-gray-200 dark:border-gray-700 mt-1 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              class="ml-2.5 pl-4 border-l-2 border-[#f5ebe0] dark:border-gray-700 mt-1 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
               <div class="flex flex-col gap-2 py-1">
                 @for (step of message.reasoning; track $index) {
                 <div
@@ -76,7 +76,7 @@
           }
 
           <!-- 2. MAIN MESSAGE BUBBLE -->
-          <div class="relative overflow-hidden rounded-2xl w-full" [ngClass]="'ai-bubble'">
+          <div class="relative overflow-hidden w-full" [ngClass]="'ai-bubble'">
 
             <!-- Content Renderer -->
             @for (block of message.content; track $index) {
@@ -86,7 +86,7 @@
 
             <!-- AI Actions Footer -->
             @if (!(isStreaming$ | async)) {
-            <div class="flex items-center gap-1 mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-1 mt-3 pt-2 border-t border-[#f5ebe0] dark:border-gray-800">
               <button mat-icon-button class="action-btn !w-8 !h-8"><mat-icon
                   class="!w-4 !h-4 !text-[16px]">thumb_up</mat-icon></button>
               <button mat-icon-button class="action-btn !w-8 !h-8"><mat-icon

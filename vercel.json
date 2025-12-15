@@ -34,5 +34,10 @@
       "src": "/(.*)",
       "dest": "/client/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/**": {
+      "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
+    }
+  }
 }

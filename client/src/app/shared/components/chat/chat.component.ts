@@ -106,7 +106,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     // Select the full status object from state
     this.streamStatus$ = this.store.select((state: any) => state.chat.streamStatus);
 
-    this.streamStatus$.subscribe(status => { console.log(status)})
+    this.messages$.subscribe(messages => { console.log(messages)})
 
     this.updateIsMobileView();
   }
