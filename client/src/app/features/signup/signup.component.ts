@@ -1,17 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { AppState } from '../../store';
 import { selectAuthError, selectAuthLoading } from '../../store/auth/auth.selectors';
 import * as AuthActions from '../../store/auth/auth.actions';
-import { AsyncPipe, CommonModule } from '@angular/common';
+import { AsyncPipe, CommonModule, Location } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { PinkButtonComponent } from "../../shared/components/pink-button/pink-button.component";
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-signup-component',
-  imports: [ReactiveFormsModule, AsyncPipe, CommonModule, RouterLink, PinkButtonComponent],
+  imports: [ReactiveFormsModule, AsyncPipe, CommonModule, RouterLink, PinkButtonComponent, MatIconModule, MatButtonModule],
   templateUrl: './signup.component.html',
   styleUrl: './signup.component.scss'
 })
@@ -19,6 +21,8 @@ export class SignupComponent {
   signupForm: FormGroup;
   loading$: Observable<boolean>;
   error$: Observable<string | null>;
+
+  private location = inject(Location);
 
   constructor(private store: Store<AppState>, private fb: FormBuilder) {
     this.signupForm = this.fb.group({
@@ -29,6 +33,10 @@ export class SignupComponent {
 
     this.loading$ = this.store.select(selectAuthLoading);
     this.error$ = this.store.select(selectAuthError);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 
   onSubmit(): void {

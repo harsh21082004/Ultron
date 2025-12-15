@@ -1,39 +1,66 @@
-
 export interface ContentBlock {
-  type: 'text' | 'code' | 'image' | 'video' | 'table';
-  value: any;
-}
-
-export interface ChatSummary {
-  _id: string;
-  title: string;
+  // UPDATED: Added 'image_url' to the valid types
+  type: 'text' | 'code' | 'table' | 'image' | 'image_url' | 'video';
+  value: string;
+  language?: string;
 }
 
 export interface ChatMessage {
-  _id: any;
+  _id: string;
   sender: 'user' | 'ai';
   content: ContentBlock[];
-  isStreaming?: boolean; // Optional flag for real-time AI responses
+  // Made optional because backend responses might not always carry it immediately
+  timestamp?: Date; 
+  isStreaming?: boolean;
+  
+  // NEW: Persist reasoning steps and status in the message itself
+  status?: string; 
+  reasoning?: string[]; 
+}
+
+// Structured Status for Real-time Thinking UI
+export interface StreamStatus {
+  current: string;
+  steps: string[];
 }
 
 export interface ChatState {
+  chatId: string | null;
+  // Using currentChatId in reducer, mapping to chatId here for consistency
+  currentChatId?: string | null; 
   messages: ChatMessage[];
-  chatList: ChatSummary[];
   isLoading: boolean;
-  currentChatId: string | null;
-  error: string | null;
-  searchResults: any[];
-  isSearching: boolean;
   isStreaming: boolean;
+  streamStatus: StreamStatus | null;
+  error: string | null;
+
+  // Sidebar / Management State
+  // FIXED: Removed '?' to ensure it is always typed as an array (even if empty)
+  chatList: any[]; 
+  
+  // Feature flags/states (Added these to match your reducer logic)
+  isSearching?: boolean;
+  searchResults?: any[];
+  isTranscribing?: boolean;
+  lastTranscription?: string;
+  isAnalyzingImage?: boolean;
+  lastVisionResult?: string;
+  isTranslating?: boolean;
+  lastTranslation?: string;
 }
 
 export const initialChatState: ChatState = {
-  messages: [],
-  chatList: [],
+  chatId: null,
   currentChatId: null,
+  messages: [],
   isLoading: false,
+  isStreaming: false,
+  streamStatus: null,
   error: null,
+  chatList: [], // Initialized as empty array
   isSearching: false,
   searchResults: [],
-  isStreaming: false
+  isTranscribing: false,
+  isAnalyzingImage: false,
+  isTranslating: false
 };

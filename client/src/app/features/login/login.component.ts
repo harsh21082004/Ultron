@@ -1,18 +1,20 @@
-import { OnInit } from '@angular/core';
+import { inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import * as AuthActions from '../../store/auth/auth.actions';
 import { Observable } from 'rxjs';
 import { selectAuthError, selectIsAuthenticated, selectAuthLoading } from '../../store/auth/auth.selectors';
 import { Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Component } from '@angular/core';
 import { PinkButtonComponent } from "../../shared/components/pink-button/pink-button.component";
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-login-component',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, RouterLink, PinkButtonComponent],
+  imports: [ReactiveFormsModule, CommonModule, RouterLink, PinkButtonComponent, MatButtonModule, MatIconModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
@@ -23,6 +25,8 @@ export class LoginComponent implements OnInit {
   error$: Observable<any>;
   isAuthenticated$: Observable<boolean>;
 
+  private location = inject(Location);
+
   constructor(
     private fb: FormBuilder,
     private store: Store,
@@ -31,6 +35,10 @@ export class LoginComponent implements OnInit {
     this.isLoading$ = this.store.select(selectAuthLoading);
     this.error$ = this.store.select(selectAuthError);
     this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 
   ngOnInit(): void {

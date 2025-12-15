@@ -15,7 +15,6 @@ import { ThemeService } from '../../../core/services/theme.services';
 import { PinkButtonComponent } from "../pink-button/pink-button.component";
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { DrawerService } from '../../../core/services/drawer.service';
-import * as ChatActions from '../../../store/chat/chat.actions';
 import * as AuthActions from '../../../store/auth/auth.actions';
 
 
@@ -63,10 +62,6 @@ export class HeaderComponent {
 
   private updateIsMobileView() {
     this.isMobileView = window.innerWidth <= 840;
-  }
-
-  deleteHistory(){
-    this.store.dispatch(ChatActions.deleteAllChats());
   }
 
   // Inject the service to use it in the template

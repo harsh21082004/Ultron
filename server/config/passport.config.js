@@ -46,7 +46,31 @@ passport.use(new GitHubStrategy({
   async (accessToken, refreshToken, profile, done) => {
     try {
       // GitHub provides emails in a separate array; find the primary one.
-      const email = profile.emails.find(e => e.primary).value;
+
+      let email = null;
+
+      // 1. Check if the emails array exists and has items
+      if (profile.emails && profile.emails.length > 0) {
+        // Try to find one marked as primary
+        const primaryEmailObj = profile.emails.find(e => e.primary);
+        
+        if (primaryEmailObj) {
+          email = primaryEmailObj.value;
+        } else {
+          // Fallback: If no 'primary' flag, just take the first one (fixes your specific error)
+          email = profile.emails[0].value;
+        }
+      }
+
+      // 2. Secondary fallback: check the raw JSON payload
+      if (!email && profile._json && profile._json.email) {
+        email = profile._json.email;
+      }
+
+      // If we still don't have an email, we can't proceed securely
+      if (!email) {
+        return done(new Error("No email found for this GitHub user"), null);
+      }
 
       let user = await User.findOne({ email: email });
 

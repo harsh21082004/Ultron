@@ -5,30 +5,26 @@ import { ChatMessage } from '../../store/chat/chat.state';
 import { environment } from '../../../environments/environment';
 import { envType } from '../../shared/models/environment';
 
+export interface StreamEvent {
+  type: 'text' | 'status' | 'log';
+  value: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ChatApiService {
   private http = inject(HttpClient);
-  // This is the URL for your FastAPI backend
   private apiUrl: string = `${(environment as envType).fastApiUrl}/chat`;
 
-  /**
-   * Helper for POST/PUT requests
-   */
   private getAuthHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
-    // Note: 'Content-Type' is set for HttpClient.
-    // fetch API sets its own content-type for JSON.
     return new HttpHeaders({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     });
   }
 
-  /**
-   * Helper for fetch API, returns headers as an object
-   */
   private getFetchAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('token');
     return {
@@ -37,36 +33,38 @@ export class ChatApiService {
     };
   }
 
-  constructor() {
-    console.log(this.apiUrl);
-  }
-
   /**
-   * --- CORRECTED ---
-   * Sends the message AND the chatId to the streaming POST endpoint.
-   * This uses the fetch API to correctly handle a streaming POST response.
+   * Connects to the backend stream and parses custom tags (__STATUS__, __THOUGHT__)
+   * into structured StreamEvents. Handles mixed chunks (Text + Tag).
    */
-  sendMessageStream(message: string, chatId: string): Observable<string> {
-
+  sendMessageStream(message: string, chatId: string, image?: string): Observable<StreamEvent> {
     return new Observable(subscriber => {
       const controller = new AbortController();
+      const signal = controller.signal;
+
+      const payload: any = { message, chatId };
+      if (image) {
+        payload.image = image;
+      }
 
       fetch(`${this.apiUrl}/stream`, {
         method: 'POST',
         headers: this.getFetchAuthHeaders(),
-        body: JSON.stringify({ message, chatId }), // Send both message and chatId
-        signal: controller.signal
+        body: JSON.stringify(payload),
+        signal
       }).then(async response => {
         if (!response.ok) {
-          // Handle HTTP errors (like 4xx, 5xx)
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         if (!response.body) {
           throw new Error("No response body");
         }
 
-        // Use TextDecoderStream to handle UTF-8 text chunks
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+
+        // --- CRITICAL FIX: Define state variable OUTSIDE the loop ---
+        // This ensures we remember the active tag (e.g. __THOUGHT__) across multiple chunks.
+        let currentTag: string | null = null;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -74,12 +72,62 @@ export class ChatApiService {
             subscriber.complete();
             break;
           }
-          // The service returns one token at a time
-          subscriber.next(value);
+
+          // Regex to split by tags but keep them in the array
+          const parts = value.split(/(__STATUS__:)|(__THOUGHT__:)|(__SOURCES__:)/).filter(Boolean);
+
+          for (const part of parts) {
+            // 1. Check if the part is a Tag Marker
+            if (part === '__STATUS__:') {
+              currentTag = 'status';
+              continue;
+            }
+            if (part === '__THOUGHT__:') {
+              currentTag = 'log';
+              continue;
+            }
+            if (part === '__SOURCES__:') {
+              currentTag = 'log'; // Treat sources as logs/thoughts
+              continue;
+            }
+
+            // 2. Process Content based on the active Tag
+            if (currentTag === 'status') {
+              subscriber.next({ type: 'status', value: part.trim() });
+              // Status is usually short/immediate, so we can reset or keep it.
+              // Resetting is safer if status is always one-line.
+              currentTag = null; 
+            } 
+            else if (currentTag === 'log') {
+              subscriber.next({ type: 'log', value: part.trim() });
+              // Do NOT reset currentTag here. Thoughts can span multiple chunks.
+              // The backend usually sends a newline or next tag to break it, 
+              // but for now, we assume logs flow until text resumes.
+              // Actually, if the next part is text, it will just append to log if we don't reset.
+              // For "Thinking...", it's usually followed by the real answer.
+              // If your backend implies "Text starts when tags end", we need a trigger.
+              // But usually, the logs come *before* the text.
+              // If the text starts, it won't have a tag. 
+              // So we might need to rely on the next tag or specific backend behavior.
+              // For this implementation, we'll keep it simple: 
+              // If we hit a tag, we stay in that tag mode for the current 'part'.
+              // BUT: To be safe for mixed streams, we often reset after processing a non-empty part
+              // UNLESS we know thoughts are multi-chunk. 
+              // Let's stick to the previous robust logic:
+              // For now, let's assume thoughts are self-contained lines or chunks.
+              // If we strictly want to prevent leakage, we reset.
+              currentTag = null; 
+            } 
+            else {
+              // No tag active, so it's regular text
+              if (part.length > 0) {
+                subscriber.next({ type: 'text', value: part });
+              }
+            }
+          }
         }
       }).catch(err => {
         if (err.name === 'AbortError') {
-          // 3. Handle the "Stop" gracefully
           console.log('Stream stopped by user.');
           subscriber.complete();
         } else {
@@ -87,14 +135,10 @@ export class ChatApiService {
         }
       });
 
-      // On unsubscribe (e.g., component destroyed), abort the fetch request
       return () => controller.abort();
     });
   }
 
-  /**
-   * Calls the FastAPI backend to generate a title for a given chat history.
-   */
   generateTitle(messages: ChatMessage[]): Observable<{ title: string }> {
     return this.http.post<{ title: string }>(`${this.apiUrl}/generate-title`,
       { messages },
@@ -102,9 +146,6 @@ export class ChatApiService {
     );
   }
 
-  /**
-   * Sends the full chat history to the FastAPI backend to hydrate the AI's memory.
-   */
   hydrateHistory(chatId: string, messages: ChatMessage[]): Observable<any> {
     return this.http.post(`${this.apiUrl}/hydrate-history`,
       { chatId, messages },
@@ -112,4 +153,3 @@ export class ChatApiService {
     );
   }
 }
-

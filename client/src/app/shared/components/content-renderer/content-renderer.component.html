@@ -4,7 +4,6 @@
     <!-- TEXT BLOCK -->
     <ng-container *ngSwitchCase="'text'">
       @if (sender === 'user') {
-        <!-- User Message Logic -->
         @if (isLong(block.content)) {
           <div>
             <div class="user-text-simple" [class.truncate-lines]="!isExpanded($index)">
@@ -18,12 +17,31 @@
           <div class="user-text-simple">{{ block.content }}</div>
         }
       } @else {
-        <!-- AI Message Logic (Markdown) -->
-        <div class="prose" 
-             [class.dark-prose]="isDarkMode()" 
-             [innerHTML]="sanitize($any(block.content))">
+        
+        <div class="prose" [class.dark-prose]="isDarkMode()">
+            <app-streaming-text [content]="$any(block.content)"></app-streaming-text>
         </div>
+
       }
+    </ng-container>
+
+    <!-- IMAGE BLOCK (NEW) -->
+    <ng-container *ngSwitchCase="'image_url'">
+        <div class="my-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-w-sm">
+            <img [src]="$any(block.content)" 
+                 alt="Uploaded Image" 
+                 class="w-full h-auto object-cover max-h-64"
+                 loading="lazy">
+        </div>
+    </ng-container>
+    <!-- Handle legacy 'image' type if any -->
+    <ng-container *ngSwitchCase="'image'">
+        <div class="my-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-w-sm">
+            <img [src]="$any(block.content)" 
+                 alt="Uploaded Image" 
+                 class="w-full h-auto object-cover max-h-64"
+                 loading="lazy">
+        </div>
     </ng-container>
 
     <!-- TABLE BLOCK -->
@@ -33,7 +51,7 @@
 
     <!-- CODE BLOCK -->
     <ng-container *ngSwitchCase="'code'">
-      <div class="code-wrapper my-4 rounded-xl overflow-hidden shadow-sm">
+      <div class="code-wrapper my-4 rounded-xl overflow-hidden ">
         
         <!-- Code Header -->
         <div class="flex justify-between items-center px-4 py-3 code-header">
@@ -43,12 +61,12 @@
           <button (click)="copyCode($any(block.content).code)"
                   class="flex items-center gap-1.5 text-xs">
             <mat-icon class="!w-[14px] !h-[14px] !text-[14px] leading-none">content_copy</mat-icon>
-            <span>Copy</span>
+            <span>Copy</span> 
           </button>
         </div>
 
         <!-- Code Body -->
-        <div class="relative overflow-x-auto mt-1">
+        <div class="relative overflow-x-auto mt-0.5">
           <pre class="m-0 p-4"><code 
             [appHighlight]="$any(block.content).code" 
             [language]="$any(block.content).language" 

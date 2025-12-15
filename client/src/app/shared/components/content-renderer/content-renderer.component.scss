@@ -4,7 +4,7 @@
 .user-text-simple {
     margin: 0;
     padding: 0;
-    line-height: 1.5; /* Standard text line height */
+    line-height: 1.4; /* MODIFIED: Reduced from 1.5 for tighter look */
     white-space: pre-wrap;
     word-break: break-word;
 }
@@ -14,26 +14,25 @@
 .truncate-lines {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 10; /* The 10 lines you requested */
+    -webkit-line-clamp: 10;
     overflow: hidden;
 }
 
 .expand-button {
     background: none;
     border: none;
-    color: #8b5cf6; /* A purple, tailwind-like color */
+    color: #8b5cf6;
     cursor: pointer;
     font-weight: 500;
     padding: 4px 0;
-    margin-top: 8px;
+    margin-top: 4px; /* MODIFIED: Reduced from 8px */
 }
 .expand-button:hover {
     text-decoration: underline;
 }
 
-/* UPDATED: Dark mode rule is no longer tied to .prose */
 .expand-button.dark-mode {
-    color: #a78bfa; /* Lighter purple for dark mode */
+    color: #a78bfa;
 }
 
 /* --- END NEW STYLES --- */
@@ -49,93 +48,107 @@ code::-webkit-scrollbar {
 }
 
 :host ::ng-deep .prose {
-    /* NOTE: These .prose styles now *only* apply
-        to the AI's messages.
-      */
-    line-height: 0.6;
-    margin: 0.25rem 0;
+    /* MODIFIED: Standardized root line-height and margin */
+    line-height: normal; 
+    margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
 
+    /* Inner prose container (if nested) */
     .prose {
-        line-height: 1;
-        margin: 0.5rem 0;
+        line-height: normal;
+        margin: 0;
         white-space: pre-wrap;
         word-break: break-word;
     }
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-        margin-top: 0.25em;
+    /* HEADINGS */
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0.5em; /* Added slight top space for separation */
         margin-bottom: 0.25em;
-        font-weight: 500;
-        line-height: 1;
+        font-weight: 600; /* Slightly bolder for hierarchy */
+        line-height: 1.2;
     }
-    h1 {
-        font-size: 1.2rem;
-    }
-    h2 {
-        font-size: 1.1rem;
-    }
-    h3 {
-        font-size: 1.05rem;
-    }
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 1.15rem; }
+    h3 { font-size: 1.05rem; }
 
+    /* PARAGRAPHS */
     p {
+        margin-bottom: 0.5em; /* Kept tight */
+        line-height: 1.45;    /* Optimized for reading */
+    }
+    /* Remove bottom margin from the last paragraph to avoid extra bubble space */
+    p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* LISTS & NESTING FIX */
+    ul, ol {
+        margin-left: 1.25em;
         margin-bottom: 0.5em;
-        line-height: 1.5;
-    }
-
-    ul,
-    ol {
-        margin-left: 1.5em;
-        margin-bottom: 1em;
         list-style-position: outside;
-        line-height: 1;
-    }
-    ul {
-        list-style-type: disc;
-    }
-    ol {
-        list-style-type: decimal;
-    }
-    li {
-        margin-bottom: 0.25em;
-        line-height: 1.5;
+        line-height: 0.5;
+
+        /* Deep Nesting Reset: Fixes gaps when ul/ol is inside an li */
+        ul, ol {
+            margin-left: 1.25em; /* Keep indentation */
+            margin-bottom: 0;    /* Remove extra bottom space */
+            margin-top: 0;       /* Connect directly to parent li text */
+        }
     }
 
+    /* Marker Hierarchy */
+    ul { list-style-type: disc; }
+    ul ul { list-style-type: circle; }
+    ul ul ul { list-style-type: square; }
+
+    ol { list-style-type: decimal; }
+    ol ol { list-style-type: lower-alpha; }
+    ol ol ol { list-style-type: lower-roman; }
+    
+    li {
+        margin-bottom: 0; /* Compact items */
+        line-height: 1.4;
+        padding-left: 0.25em;
+    }
+    
+    li > p {
+        margin-bottom: 0.25em; /* Reduce paragraph gap inside list items */
+    }
+    
+    li > p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* INLINE CODE */
     code {
-        background-color: #d4d9df;
-        padding: 0.1em 0.35em;
-        border-radius: 6px;
-        font-family: monospace;
+        background-color: rgba(0, 0, 0, 0.05); /* Subtle bg for light mode */
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
         font-size: 0.85em;
     }
 
+    /* Dark mode inline code adjustment handled by .dark-prose above */
+
+    /* Custom Components inside prose */
     :host ::ng-deep app-code-editor-canvas,
     :host ::ng-deep app-table-template {
-        margin: 0.5rem 0;
+        margin: 0.75rem 0; /* MODIFIED: Reduced margin */
     }
 }
 
 :host ::ng-deep app-code-editor-canvas,
 :host ::ng-deep app-table-template {
-    margin: 1rem 0;
+    margin: 0.75rem 0;
 }
 
 /* ---------------------------------------------------------
-
        TIWARI JI: CUSTOM SYNTAX HIGHLIGHTING STYLES
+   --------------------------------------------------------- */
 
-       This replaces the need for external CSS files.
-
-       --------------------------------------------------------- */
-
-/* 1. Dark Theme (Atom One Dark inspired) */
+/* 1. Dark Theme */
 
 pre,
 .code-header {
@@ -143,9 +156,9 @@ pre,
 }
 
 :host ::ng-deep code.dark-theme {
-    background: var(--mat-menu-container-color) !important; /* Let container bg show */
-
+    background: var(--mat-menu-container-color) !important;
     color: #abb2bf;
+    line-height: 1.5; /* Code needs slightly more breathing room */
 }
 
 :host ::ng-deep code.dark-theme .hljs-comment,
@@ -213,12 +226,12 @@ pre,
     font-weight: bold;
 }
 
-/* 2. Light Theme (GitHub/VSCode Light inspired) */
+/* 2. Light Theme */
 
 :host ::ng-deep code.light-theme {
     background: transparent !important;
-
     color: #24292e;
+    line-height: 1.5;
 }
 
 :host ::ng-deep code.light-theme .hljs-comment,
@@ -275,4 +288,75 @@ pre,
 :host ::ng-deep code.light-theme .hljs-selector-id,
 :host ::ng-deep code.light-theme .hljs-title {
     color: #6f42c1;
+}
+
+/* =========================================
+   TIWARI JI: GEMINI / ULTRON STYLING
+   ========================================= */
+
+/* 1. Base Typography (Prose) */
+:host ::ng-deep .prose {
+  font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  color: #1f1f1f; /* Soft Black */
+}
+
+:host ::ng-deep .dark-prose {
+  color: #e3e3e3; /* Soft White */
+}
+
+/* 2. Headings */
+:host ::ng-deep .prose h1,
+:host ::ng-deep .prose h2,
+:host ::ng-deep .prose h3 {
+  font-weight: 500; /* Not too bold */
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  line-height: 0.5;
+}
+
+:host ::ng-deep .prose strong {
+  font-weight: 600;
+  color: #000;
+}
+:host ::ng-deep .dark-prose strong {
+  color: #fff;
+}
+
+/* 3. Lists (Gemini uses specific bullet spacing) */
+:host ::ng-deep .prose ul, 
+:host ::ng-deep .prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+}
+
+:host ::ng-deep .prose li {
+  margin-bottom: 0.25em;
+  padding-left: 0.25em;
+}
+
+:host ::ng-deep .prose li::marker {
+  color: #888; /* Subtle bullets */
+}
+
+/* 4. Inline Code (The little boxes inside text) */
+:host ::ng-deep .prose :not(pre) > code {
+  background-color: var(--mat-menu-container-color); /* Light Blue-Grey */
+  color: #1f1f1f;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+:host ::ng-deep .dark-prose :not(pre) > code {
+  color: #e3e3e3;
+}
+
+.dark-header {
+  background: #2d2d2d;
+  color: #a0a0a0;
 }

@@ -1,24 +1,22 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// This schema is correct.
 const ContentBlockSchema = new Schema({
     type: {
         type: String,
         required: true,
-        enum: ['text', 'code', 'image', 'video', 'table']
+        enum: ['text', 'code', 'image', 'image_url', 'video', 'table'] // Added image_url
     },
     value: {
         type: Schema.Types.Mixed,
         required: true
-    }
+    },
+    language: String
 }, { _id: false });
 
-
-// --- THIS IS THE FIX ---
 const MessageSchema = new Schema({ 
-    _id: { // 1. ADD this field
-        type: String, // 2. Set type to String
+    _id: { 
+        type: String, 
         required: true,
     },
     sender: {
@@ -26,17 +24,24 @@ const MessageSchema = new Schema({
         required: true,
         enum: ['user', 'ai']
     },
-    content: [ContentBlockSchema]
+    content: [ContentBlockSchema],
+    
+    // NEW: Fields to persist the "Thinking" process
+    status: { 
+        type: String, 
+        default: 'Completed' 
+    },
+    reasoning: {
+        type: [String], // Array of strings for step-by-step logs
+        default: []
+    }
 }, { 
     timestamps: true,
-    // _id: false // 3. REMOVE this line
 });
-// --- END OF FIX ---
-
 
 const ChatSchema = new Schema({
     _id: {
-        type: String, // This is correct (for the Chat ID)
+        type: String,
         required: true,
     },
     userId: {
@@ -49,7 +54,7 @@ const ChatSchema = new Schema({
         required: true,
         trim: true
     },
-    messages: [MessageSchema] // This will now use the corrected MessageSchema
+    messages: [MessageSchema]
 }, { 
     timestamps: true,
     versionKey: false 

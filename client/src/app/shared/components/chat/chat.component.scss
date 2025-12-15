@@ -20,7 +20,8 @@
   background-color: var(--mat-menu-container-color);
   border-bottom-left-radius: 20px;
   border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
+  box-shadow: 0 -4px 20px rgb(0 0 0 / 19%);
 
 }
 
@@ -75,3 +76,16 @@
   background: linear-gradient(90deg, rgba(189, 0, 88, 1) 0%, rgba(250, 100, 157, 1) 30%, rgba(213, 217, 129, 1) 50%, rgba(134, 237, 83, 1) 100%);
 }
 
+.action-btn, .action-btn span{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.small-icon{
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}

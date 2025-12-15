@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime, takeUntil } from 'rxjs/operators';
+import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime, takeUntil, tap } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
 import * as ChatActions from './chat.actions';
 import { AppState } from '..';
@@ -9,17 +9,20 @@ import { selectChatMessages } from './chat.selectors';
 import { selectAuthUser } from '../auth/auth.selectors';
 import { ChatApiService } from '../../core/services/chat-api.services';
 import { ChatDbService } from '../../core/services/chat-db.service';
+import { AudioApiService } from '../../core/services/audio-api.service';
+import { VisionApiService } from '../../core/services/vision-api.service';
+import { TranslateApiService } from '../../core/services/translate-api.service';
 
 @Injectable()
 export class ChatEffects {
   private actions$ = inject(Actions);
   private store = inject(Store<AppState>);
-  private chatApiService = inject(ChatApiService); // For FastAPI streaming
-  private chatDbService = inject(ChatDbService);   // For Express DB operations
+  private chatApiService = inject(ChatApiService);
+  private chatDbService = inject(ChatDbService);
+  private audioApi = inject(AudioApiService);
+  private visionApi = inject(VisionApiService);
+  private translateApi = inject(TranslateApiService);
 
-  /**
-   * Effect to load a chat's history FROM THE EXPRESS BACKEND.
-   */
   loadHistory$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.loadChatHistory),
@@ -32,34 +35,34 @@ export class ChatEffects {
     );
   });
 
-  /**
-   * Effect to initiate the real-time streaming FROM THE FASTAPI BACKEND.
-   */
+  // --- UPDATED: Handles Status, Logs (Thoughts), and Text events ---
   sendMessage$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.sendMessage),
       switchMap(action =>
-        this.chatApiService.sendMessageStream(action.message, action.chatId).pipe(
-          // 1. Process incoming chunks
-          map(chunk => ChatActions.receiveStreamChunk({ chunk })),
-          
-          // 2. STOP LOGIC: If 'stopStream' is dispatched, unsubscribe immediately.
-          // This triggers the cleanup function in ChatApiService (controller.abort()).
+        this.chatApiService.sendMessageStream(action.message, action.chatId, action.image).pipe(
+          map(event => {
+            // 1. STATUS UPDATE (e.g. "Thinking...")
+            if (event.type === 'status') {
+              return ChatActions.updateStreamStatus({ status: event.value });
+            } 
+            // 2. LOG / REASONING (e.g. "Identifying Intent...") -> FIX ADDED HERE
+            else if (event.type === 'log') {
+              return ChatActions.addStreamLog({ log: event.value });
+            } 
+            // 3. TEXT CHUNK (The actual answer) 
+            else {
+              return ChatActions.receiveStreamChunk({ chunk: event.value });
+            }
+          }),
           takeUntil(this.actions$.pipe(ofType(ChatActions.stopStream))),
-          
-          // 3. COMPLETION: Whether finished naturally OR stopped manually, 
-          // fire streamComplete so we can save the (possibly partial) response.
           endWith(ChatActions.streamComplete({ chatId: action.chatId })),
-          
           catchError(error => of(ChatActions.streamFailure({ error: error.message })))
         )
       )
     );
   });
 
-  /**
-   * Helper effect to add an empty AI message bubble to the UI.
-   */
   startStream$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.sendMessage),
@@ -70,7 +73,6 @@ export class ChatEffects {
   hydrateAiMemory$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.loadChatHistorySuccess),
-      // Only hydrate if there are messages to send
       filter(action => !!action.chatId && action.messages.length > 0),
       switchMap(action =>
         this.chatApiService.hydrateHistory(action.chatId, action.messages).pipe(
@@ -81,9 +83,6 @@ export class ChatEffects {
     );
   });
 
-  /**
-   * Effect to save the completed chat history TO THE EXPRESS BACKEND.
-   */
   saveOnStreamComplete$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.streamComplete),
@@ -92,29 +91,19 @@ export class ChatEffects {
         const chatId = action.chatId;
 
         if (!chatId || messages.length < 2) {
-          // Not enough info to save, just fail silently or with a specific action
           return of(ChatActions.saveChatHistoryFailure({ error: 'Missing data to save chat.' }));
         }
 
-        console.log(messages)
-
-
-        // --- NEW STEP 1: Call FastAPI to generate a title ---
         return this.chatApiService.generateTitle(messages).pipe(
           switchMap(titleResponse => {
-            // --- NEW STEP 2: Use the AI title to save to the DB ---
-            const aiTitle = titleResponse.title || 'New Chat'; // Use response or fallback
+            const aiTitle = titleResponse.title || 'New Chat';
             return this.chatDbService.saveChat(chatId, messages, aiTitle).pipe(
               map(() => ChatActions.saveChatHistorySuccess({ chatId, newTitle: aiTitle })),
               catchError(error => of(ChatActions.saveChatHistoryFailure({ error: error.message })))
             );
           }),
           catchError(titleError => {
-            // Handle error from title generation
-            // We can still save the chat with a default title
             console.error("Failed to generate AI title, saving with default.", titleError);
-
-            // Fallback: Create title from the first user message
             const firstUserMessage = messages.find(m => m.sender === 'user');
             const firstTextContent = firstUserMessage?.content.find(c => c.type === 'text');
             const defaultTitle = (firstTextContent?.value as string)?.substring(0, 50) || 'New Chat';
@@ -138,18 +127,14 @@ export class ChatEffects {
           catchError(error => of(ChatActions.getAllChatsFailure({ error: error.message })))
         )
       ))
-  })
+  });
 
   refetchChatsAfterSave$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.saveChatHistorySuccess), // Trigger on successful save
-      withLatestFrom(this.store.select(selectAuthUser)), // Get the current user
-      filter(([action, user]) => !!user), // Only proceed if the user is logged in
-      map(([action, user]) => {
-        // Dispatch the action to get all chats for this user
-        // We use user!._id because the filter above ensures user is not null.
-        return ChatActions.getAllChats({ userId: user!._id });
-      })
+      ofType(ChatActions.saveChatHistorySuccess),
+      withLatestFrom(this.store.select(selectAuthUser)),
+      filter(([action, user]) => !!user),
+      map(([action, user]) => ChatActions.getAllChats({ userId: user!._id }))
     );
   });
 
@@ -163,17 +148,14 @@ export class ChatEffects {
           map(() => ChatActions.getAllChatsSuccess({ chats: [] })),
           catchError(error => of(ChatActions.getAllChatsFailure({ error: error.message })))
         )
-      }
-      )
+      })
     )
-  })
+  });
 
-  // --- TIWARI JI: NEW SEARCH EFFECT ---
-  // Calls the service when searchChats is dispatched
   searchChats$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.searchChats),
-      debounceTime(300), // Wait 300ms to avoid spamming API while typing
+      debounceTime(300),
       switchMap(action => 
         this.chatDbService.searchChats(action.query).pipe(
           map(results => ChatActions.searchChatsSuccess({ results })),
@@ -183,5 +165,39 @@ export class ChatEffects {
     );
   });
 
-  constructor() { }
+  transcribeAudio$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.transcribeAudio),
+      switchMap(action =>
+        this.audioApi.transcribe(action.file).pipe(
+          map(res => ChatActions.transcribeAudioSuccess({ text: res.text })),
+          catchError(err => of(ChatActions.transcribeAudioFailure({ error: err.message ?? 'Transcription failed' })))
+        )
+      )
+    );
+  });
+
+  analyzeImage$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.analyzeImage),
+      switchMap(action =>
+        this.visionApi.analyzeImage(action.imageUrl, action.prompt).pipe(
+          map(res => ChatActions.analyzeImageSuccess({ imageUrl: action.imageUrl, result: res.result })),
+          catchError(err => of(ChatActions.analyzeImageFailure({ error: err.message ?? 'Vision analysis failed' })))
+        )
+      )
+    );
+  });
+
+  translateText$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.translateText),
+      switchMap(action =>
+        this.translateApi.translate(action.text, action.targetLanguage).pipe(
+          map(res => ChatActions.translateTextSuccess({ translated: res.translated_text })),
+          catchError(err => of(ChatActions.translateTextFailure({ error: err.message ?? 'Translation failed' })))
+        )
+      )
+    );
+  });
 }

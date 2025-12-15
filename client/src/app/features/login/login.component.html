@@ -6,8 +6,11 @@
         <!-- Background circles -->
         <div class="circle circle-pink"></div>
         <div class="circle circle-purple"></div>
+        <button mat-icon-button matTooltip="Edit Message" (click)="goBack()" class="action-btn !absolute left-2 top-2 !border !border-gray-600">
+            <mat-icon class="small-icon">arrow_back</mat-icon>
+        </button>
 
-        <h2 class="text-2xl font-bold  mb-2">Login</h2>
+        <h2 class="text-2xl font-bold mt-10 mb-2">Login</h2>
         <p class=" text-sm mb-6">Welcome Back Please Login To Your Account</p>
 
         <!-- Form -->
@@ -45,7 +48,7 @@
         <!-- Social Login Buttons -->
         <div class="flex justify-center gap-2 space-y-3">
             <button (click)="onGoogleLogin()"
-                class="w-full !rounded-l-15 max-w-[40%] h-15 flex items-center justify-center gap-3 py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-md text-white font-medium transition-colors">
+                class="w-full !rounded-l-[50px] cursor-pointer max-w-[40%] h-15 flex items-center justify-center gap-3 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors">
                 <!-- Google SVG Icon -->
                 <svg class="w-5 h-5" viewBox="0 0 48 48">
                     <path fill="#FFC107"
@@ -64,7 +67,7 @@
                 Google
             </button>
             <button (click)="onGitHubLogin()"
-                class="w-full rounded-r-15 h-15 max-w-[40%] flex items-center justify-center gap-3 py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-md text-white font-medium transition-colors">
+                class="w-full !rounded-r-[50px] cursor-pointer h-15 max-w-[40%] flex items-center justify-center gap-3 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors">
                 <!-- GitHub SVG Icon -->
                 <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
                     <path

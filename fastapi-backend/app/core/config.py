@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     # --- API Keys ---
     GROQ_API_KEY: str
+    OPENAI_API_KEY: str | None = None
+    PINECONE_API_KEY: str | None = None
+    PINECONE_INDEX_NAME: str = "ultron-memory"
+    GOOGLE_API_KEY: str | None = None
+    GOOGLE_CSE_ID: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

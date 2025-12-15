@@ -94,8 +94,6 @@ const socialLoginCallback = (req, res) => {
   // Passport attaches the authenticated user object to `req.user`
   const user = req.user;
 
-  console.log(user)
-
   // 1. Create a JWT payload
   const payload = {
     _id: user._id,

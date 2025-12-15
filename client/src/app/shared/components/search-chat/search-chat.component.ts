@@ -39,8 +39,8 @@ export class SearchChat implements OnInit {
   searchControl = new FormControl('');
   
   // Selectors from NGRX
-  searchResults$: Observable<any[]> = this.store.select(selectSearchResults);
-  isSearching$: Observable<boolean> = this.store.select(selectIsSearching);
+  searchResults$: Observable<any[] | undefined> = this.store.select(selectSearchResults);
+  isSearching$: Observable<boolean | undefined> = this.store.select(selectIsSearching);
 
   ngOnInit() {
     // Listen to input changes

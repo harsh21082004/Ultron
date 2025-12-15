@@ -13,7 +13,7 @@ export class ChatDbService {
   private apiUrl: string = `${(environment as envType).apiUrl}/chats`;
 
   constructor(private http: HttpClient) {
-    console.log(this.apiUrl);
+    // console.log(this.apiUrl);
    }
 
   /**
@@ -30,15 +30,12 @@ export class ChatDbService {
    * Saves the entire chat history to the database via the Express backend.
    * @param chatId The ID of the current chat session.
    * @param messages The array of all messages in the conversation.
+   * @param title The title of the chat.
    */
   saveChat(chatId: string, messages: ChatMessage[], title: string): Observable<any> {
-    // Safely find the first user message to create a title
-    const firstUserMessage = messages.find(m => m.sender === 'user');
-    const firstTextContent = firstUserMessage?.content.find(c => c.type === 'text');
-
     const payload = { chatId, messages, title };
     
-    // Makes a POST request to your Express server's /api/chats endpoint
+    // Makes a POST request to your Express server's /api/chats/save endpoint
     return this.http.post(`${this.apiUrl}/save`, payload, { headers: this.getAuthHeaders() });
   }
 
@@ -48,7 +45,6 @@ export class ChatDbService {
    * @returns An Observable array of ChatMessages.
    */
   getChatHistory(chatId: string): Observable<ChatMessage[]> {
-    // This assumes your Express backend has a GET endpoint like /api/chats/:id
     return this.http.get<ChatMessage[]>(`${this.apiUrl}/get/${chatId}`, {
       headers: this.getAuthHeaders()
     });
@@ -74,4 +70,3 @@ export class ChatDbService {
     });
   }
 }
-

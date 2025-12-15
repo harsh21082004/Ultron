@@ -63,7 +63,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem('token');
     this.router.navigate(['/']);
-    this.snackbar.open('Successfully logged out!', 'Dismiss', 'center', 'bottom', 'success');
+    this.snackbar.open('Successfully logged out!', 'Dismiss', 'center', 'top', 'success');
   }
 
   // --- Session Re-hydration ---

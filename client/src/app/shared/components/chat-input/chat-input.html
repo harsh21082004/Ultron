@@ -1,62 +1,102 @@
-<form [formGroup]="chatForm" (ngSubmit)="onSubmit()" class="chat-input-content rounded-2xl p-2 mt-4 sm:p-3 bg-[var(--mat-menu-container-color)] shadow-lg">
-  
-  <textarea #chatTextarea formControlName="message" rows="1" placeholder="Message AI Chat..."
-    class="w-full textarea bg-transparent resize-none px-3 sm:px-4 placeholder-gray-500 focus:outline-none text-[var(--mat-sys-on-surface)]"
-    (keydown)="handleEnterPress($event)" appAutoGrow [appAutoGrowMaxLines]="4"></textarea>
+<form [formGroup]="chatForm" (ngSubmit)="onSubmit()"
+  class="chat-input-content rounded-2xl p-2 mt-4 sm:p-3 bg-[var(--mat-menu-container-color)] shadow-lg flex flex-col transition-shadow duration-200 focus-within:shadow-xl border border-white/5">
 
-  <div class="flex items-center justify-between mt-2">
-    <!-- Left Actions -->
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
-        <mat-icon class="text-[20px] sm:text-[24px]">mic</mat-icon>
+  <!-- 
+    TIWARI JI: File Chips Section 
+    Only visible when files are selected.
+  -->
+  @if (files.length > 0) {
+    <div class="px-2 pb-2">
+      <mat-chip-grid #chipGrid aria-label="Selected files">
+        @for (file of files; track file.name) {
+          <mat-chip-row (removed)="removeFile(file)" 
+            class="!bg-black/5 dark:!bg-white/10 !text-xs !font-medium">
+            
+            <!-- Dynamic Icon based on file type -->
+            <mat-icon matChipAvatar class="!text-gray-500 dark:!text-gray-300">
+              {{ file.type.startsWith('image') ? 'image' : (file.type.startsWith('audio') ? 'mic' : 'description') }}
+            </mat-icon>
+            
+            <!-- Truncate long filenames -->
+            <span class="text-[var(--mat-sys-on-surface)]">
+              {{ file.name | slice:0:20 }}{{ file.name.length > 20 ? '...' : '' }}
+            </span>
+            
+            <button matChipRemove [attr.aria-label]="'remove ' + file.name">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip-row>
+        }
+      </mat-chip-grid>
+    </div>
+  }
+
+  <!-- Text Input Area -->
+  <textarea #chatTextarea formControlName="message" rows="1" placeholder="Message AI Chat..."
+    class="w-full textarea bg-transparent resize-none px-3 sm:px-4 placeholder-gray-500 focus:outline-none text-[var(--mat-sys-on-surface)] max-h-[200px]"
+    (keydown)="handleEnterPress($event)" appAutoGrow [appAutoGrowMaxLines]="6"></textarea>
+
+  <!-- Actions Bar -->
+  <div class="flex items-center justify-between mt-2 pt-1 border-t border-transparent">
+    
+    <!-- Left: Attachments -->
+    <div class="flex items-center gap-1">
+      <!-- Hidden Native Inputs -->
+      <input type="file" #audioInput hidden accept="audio/*" (change)="onFileSelected($event)">
+      <input type="file" #imageInput hidden accept="image/*" (change)="onFileSelected($event)">
+      <input type="file" #docInput hidden accept=".pdf,.txt,.doc,.docx,.csv" (change)="onFileSelected($event)">
+
+      <button type="button" mat-icon-button (click)="audioInput.click()" matTooltip="Upload Audio"
+        class="opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all">
+        <mat-icon class="!text-[20px]">mic</mat-icon>
       </button>
-      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
-        <mat-icon class="text-[20px] sm:text-[24px] font-extrabold rotate-45">attach_file</mat-icon>
+      
+      <button type="button" mat-icon-button (click)="imageInput.click()" matTooltip="Upload Image"
+        class="opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all">
+        <mat-icon class="!text-[20px] font-bold rotate-45">attach_file</mat-icon>
       </button>
-      <button type="button" matIconButton class="border-gray-300 dark:border-gray-600 !h-8 sm:!h-9 !min-w-0 px-2 opacity-70 hover:opacity-100">
-        <mat-icon class="text-[20px] sm:text-[24px]">search</mat-icon>
+      
+      <button type="button" mat-icon-button (click)="docInput.click()" matTooltip="Upload Document"
+        class="opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all">
+        <mat-icon class="!text-[20px]">search</mat-icon>
       </button>
     </div>
 
-    <!-- Right Actions -->
-    <div class="right flex justify-center items-center gap-3">
-      <!-- Model Selector -->
-      <button [matMenuTriggerFor]="model" matButton class="p-2 flex justify-center items-center text-[var(--mat-sys-on-surface)]">
-        Pro
-        <mat-icon class="text-[20px] sm:text-[24px] font-extrabold">keyboard_arrow_down</mat-icon>
+    <!-- Right: Model Select & Send -->
+    <div class="right flex items-center gap-2">
+      <!-- Model Dropdown -->
+      <button type="button" [matMenuTriggerFor]="modelMenu" mat-button 
+        class="!px-3 !min-w-0 !rounded-full opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 text-[var(--mat-sys-on-surface)]">
+        <span class="text-sm font-medium mr-1">Pro</span>
+        <mat-icon class="!text-[18px] !w-[18px] !h-[18px]">keyboard_arrow_down</mat-icon>
       </button>
       
-      <mat-menu #model="matMenu" class="min-w-[250px] px-0 py-1 !rounded-2xl profile-menu">
-        <div class="flex flex-col justify-start items-start">
-          <span class="px-3 py-2 font-semibold">Select Model</span>
-          <div class="w-full">
-            <button mat-menu-item>
-              <span class="block font-medium">Thinking</span>
-              <span class="block text-xs text-gray-400">Deep thinking for complex problems</span>
-            </button>
-            <button mat-menu-item>
-              <span class="block font-medium">Fast</span>
-              <span class="block text-xs text-gray-400">Responds quickly</span>
-            </button>
-            <button mat-menu-item>
-              <span class="block font-medium">Light</span>
-              <span class="block text-xs text-gray-400">Fast for easy problems</span>
-            </button>
-          </div>
-        </div>
+      <mat-menu #modelMenu="matMenu" class="!rounded-xl !min-w-[220px]">
+         <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Select Model</div>
+         <button mat-menu-item>
+            <mat-icon>psychology</mat-icon>
+            <span>Thinking (DeepSeek)</span>
+         </button>
+         <button mat-menu-item>
+            <mat-icon>flash_on</mat-icon>
+            <span>Fast (Llama 3.3)</span>
+         </button>
+         <button mat-menu-item>
+            <mat-icon>bolt</mat-icon>
+            <span>Light (Llama 8B)</span>
+         </button>
       </mat-menu>
 
       <!-- Send / Stop Button -->
-      @if (isLoading || isStreaming) {
-        <button type="button" matMiniFab (click)="onStop()" matTooltip="Stop generating"
-          class="bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white !w-10 !h-10 sm:!w-11 sm:!h-11 shadow-none transition-colors">
-          <mat-icon class="text-[20px] sm:text-[24px]">stop</mat-icon>
+      @if (isStreaming) {
+        <button type="button" mat-mini-fab (click)="onStop()" matTooltip="Stop generating" class="!bg-red-500 !rounded-full !cursor-pointer !hover:bg-red-600 !dark:hover:bg-red-700">
+          <img src="assets/images/stop.svg" class="w-4 h-4 dark:invert-0 invert" alt="stop">
         </button>
       } @else {
-        <button type="submit" matMiniFab class="bg-gray-200 dark:bg-gray-700 hover:bg-pink-600 disabled:bg-gray-300 dark:disabled:bg-gray-800
-            !w-10 !h-10 sm:!w-11 sm:!h-11 transition-colors" 
-            [disabled]="chatForm.invalid" aria-label="Send message">
-          <img src="assets/images/send.svg" alt="" class="w-5 h-5 sm:w-6 sm:h-6 invert dark:invert-[0]">
+        <button type="submit" mat-mini-fab class="!rounded-full !cursor-pointer !hover:bg-black/5 !dark:hover:bg-white/10"
+            [disabled]="!chatForm.value.message?.trim() && files.length === 0"
+            aria-label="Send message">
+            <img src="assets/images/send.svg" class="dark:invert-0 invert" alt="send">
         </button>
       }
     </div>

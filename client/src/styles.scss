@@ -68,7 +68,7 @@ html.dark {
 
 // --- LIGHT MODE VARIABLES ---
 html {
-  $light-bg: #f0f4f9;
+  $light-bg: #f5ebe0;
   $light-text: #1b1c1d;
 
   --mat-menu-container-color: #{$light-bg};
@@ -76,6 +76,7 @@ html {
   --mat-sys-on-surface: #{$light-text};
   --gem-sys-color--on-surface: #{$light-text};
   --mat-button-text-label-text-color: #{$light-text};
+  background: linear-gradient(135deg, #e7d7c1 20%, #dedbd2 70%);
 }
 
 // --- GLOBAL RESET & LAYOUT FIXES ---

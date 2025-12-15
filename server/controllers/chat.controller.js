@@ -2,11 +2,14 @@ const Chat = require('../models/Chat');
 
 /**
  * Saves or updates a chat conversation in the database.
+ * Supports the new schema fields (status, reasoning) automatically via Mongoose validation.
  */
 const saveChat = async (req, res) => {
   try {
     const { chatId, messages, title } = req.body;
     const userId = req.user.id; // From 'protect' middleware
+
+    console.log(messages)
 
     if (!chatId || !messages || messages.length === 0) {
       return res.status(400).json({ message: 'Missing required chat data.' });
@@ -17,7 +20,7 @@ const saveChat = async (req, res) => {
       { _id: chatId, userId: userId }, // Query by document _id and owner's userId
       { 
         $set: { 
-          messages: messages,
+          messages: messages, // Now includes 'status' and 'reasoning' fields if present in payload
           title: title
         },
         $setOnInsert: { // On creation, ensure these fields are set
@@ -79,19 +82,28 @@ const getChatById = async (req, res) => {
     }
 }
 
+/**
+ * Deletes all chats for the specific user.
+ */
 const deleteAllChats = async (req, res) => {
-  try{
-    const userid = req.user.id;
-    if(!userid){
-      return res.status(400).json({message: "User ID is required"})
+  try {
+    const userId = req.user.id;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
     }
-    await Chat.deleteMany({userId: userid});
-    res.status(200).json({message: "all Chats Cleared"})
-  }catch(err){
-    rest.status(500).json({message: "Server Error while deleting chats"})
+    
+    await Chat.deleteMany({ userId: userId });
+    
+    res.status(200).json({ message: "All Chats Cleared" });
+  } catch (err) {
+    console.error('Error deleting chats:', err);
+    res.status(500).json({ message: "Server Error while deleting chats" });
   }
 }
 
+/**
+ * Searches across all chats for a user.
+ */
 const searchChats = async (req, res) => {
   try {
     const { query } = req.query;
@@ -166,4 +178,3 @@ module.exports = {
   deleteAllChats,
   searchChats
 };
-
