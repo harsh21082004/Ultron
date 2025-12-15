@@ -1,0 +1,28 @@
+Ignore Python virtual environments (Vercel creates its own)
+
+.venv
+venv
+env
+ENV
+
+Ignore Python cache
+
+pycache
+*.pyc
+*.pyo
+*.pyd
+
+Ignore local environment variables
+
+.env
+.env.*
+
+Ignore git
+
+.git
+.gitignore
+
+If you have a separate client folder, ensure node_modules isn't uploaded to the backend function
+
+node_modules
+client/node_modules
