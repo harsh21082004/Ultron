@@ -47,13 +47,13 @@ export class MarkdownParserService {
     let codeBuffer: string[] = [];
 
     let inCodeBlock = false;
+    let inTableBlock = false; // New flag to track table state
     let currentLanguage = 'plaintext';
 
     const flushText = () => {
       if (textBuffer.length) {
         const content = textBuffer.join('\n').trim();
         if (content) {
-          // --- MODIFIED: Push strongly typed block ---
           blocks.push({ type: 'text', content });
         }
         textBuffer = [];
@@ -65,25 +65,23 @@ export class MarkdownParserService {
         const tableMarkdown = tableBuffer.join('\n').trim();
         const parsed = this.parseTable(tableMarkdown);
         if (parsed) {
-          // --- MODIFIED: Push strongly typed block ---
           blocks.push({ type: 'table', content: parsed });
         } else {
-          // If parsing fails, treat it as text
+          // If parsing fails (e.g. incomplete table), treat it as text
           textBuffer.push(...tableBuffer);
         }
         tableBuffer = [];
+        inTableBlock = false;
       }
     };
 
     const flushCode = () => {
       if (codeBuffer.length || inCodeBlock) {
-        // Flush even if buffer is empty if we were in a block
-        // --- MODIFIED: Push strongly typed block ---
         blocks.push({
           type: 'code',
           content: {
             language: currentLanguage,
-            code: codeBuffer.join('\n'), // Preserve internal indentation/newlines
+            code: codeBuffer.join('\n'), 
           },
         });
         codeBuffer = [];
@@ -94,32 +92,46 @@ export class MarkdownParserService {
 
     for (const rawLine of lines) {
       const line = rawLine.trim();
-      const isTableLine = line.startsWith('|');
+      const isTableLine = line.startsWith('|'); // Basic check for table row
       const isCodeFence = line.startsWith('```');
 
+      // 1. Handle Code Blocks
       if (inCodeBlock) {
         if (isCodeFence) {
-          // End of code block
-          flushCode();
+          flushCode(); // End of code block
         } else {
-          // Add line to code buffer
-          codeBuffer.push(rawLine); // Use rawLine to preserve indentation
+          codeBuffer.push(rawLine);
         }
-      } else if (isCodeFence) {
-        // Start of new code block
-        flushText();
+        continue;
+      }
+
+      if (isCodeFence) {
+        // Start of new code block -> Flush previous buffers
         flushTable();
+        flushText();
         inCodeBlock = true;
         currentLanguage = line.substring(3).trim().toLowerCase() || 'plaintext';
-      } else if (isTableLine) {
-        // Table line
-        flushText();
-        tableBuffer.push(line); // Use trimmed line for table parser
-      } else {
-        // Text line
-        flushTable();
-        // Don't push empty lines if textBuffer is empty,
-        // but do push them if they are between text (paragraph breaks)
+        continue;
+      }
+
+      // 2. Handle Tables
+      // Check if this line looks like part of a table
+      if (isTableLine) {
+        // If we weren't in a table, this might be the start. Flush text.
+        if (!inTableBlock) {
+           flushText();
+           inTableBlock = true;
+        }
+        tableBuffer.push(line);
+      } 
+      else {
+        // 3. Handle Text
+        // If we were in a table but hit a non-table line, the table ended.
+        if (inTableBlock) {
+          flushTable();
+        }
+        
+        // Don't push purely empty lines if buffer is empty to avoid gaps at start
         if (rawLine.trim() !== '' || textBuffer.length > 0) {
           textBuffer.push(rawLine);
         }
@@ -129,12 +141,11 @@ export class MarkdownParserService {
     // End-of-input flush
     flushTable();
     flushText();
-    flushCode(); // Flush any remaining code block
+    flushCode(); 
 
     // Filter out empty blocks
     return blocks.filter((block) => {
       if (block.type === 'text' && !block.content) return false;
-      // All other block types (table, code) are assumed to be valid if they exist
       return true;
     });
   }
@@ -143,26 +154,44 @@ export class MarkdownParserService {
    * Parse a markdown table (simple). Returns { headers, rows, title? } or null.
    */
   private parseTable(markdown: string): TableContent | null {
+
+    console.log(markdown)
     // keep only lines that look like table rows
     const lines = markdown
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l.startsWith('|'));
+    
+    // A valid table needs at least 2 lines (Header + Separator)
     if (lines.length < 2) return null;
 
     // find header and separator lines
-    const headerLine = lines[0];
-    const sepLineIndex = lines.findIndex(
-      (l) =>
-        /\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)+/.test(l) || l.includes('---')
-    );
-    if (sepLineIndex === -1) return null;
+    // Logic: The separator line |---| usually comes second.
+    // If lines[1] is a separator, then lines[0] is the header.
+    
+    const separatorRegex = /^\|?[\s-:|]+\|?$/; // Matches |---| or | :--- |
+    
+    let headerIndex = -1;
+    let sepLineIndex = -1;
 
+    for (let i = 0; i < lines.length - 1; i++) {
+        if (separatorRegex.test(lines[i+1])) {
+            headerIndex = i;
+            sepLineIndex = i + 1;
+            break;
+        }
+    }
+
+    if (headerIndex === -1) return null;
+
+    const headerLine = lines[headerIndex];
+    
     // headers
     const headers = headerLine
       .split('|')
-      .map((h) => h.replace(/\*\*/g, '').trim())
+      .map((h) => h.replace(/\*\*/g, '').trim()) // Clean bold syntax
       .filter(Boolean);
+      
     if (headers.length === 0) return null;
     const columnCount = headers.length;
 
@@ -182,7 +211,9 @@ export class MarkdownParserService {
       const slice = allCells.slice(i, i + columnCount);
       if (slice.length === columnCount) rows.push(slice);
     }
-    if (!rows.length) return null;
+    
+    // Allow empty rows if the table structure is valid but empty
+    if (!rows.length && dataLines.length > 0) return null; 
 
     const formattedRows = rows.map((r) =>
       headers.reduce((acc, h, i) => {
@@ -194,4 +225,3 @@ export class MarkdownParserService {
     return { headers, rows: formattedRows };
   }
 }
-

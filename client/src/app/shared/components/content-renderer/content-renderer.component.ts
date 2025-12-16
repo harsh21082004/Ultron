@@ -6,27 +6,23 @@ import {
   computed,
   inject,
   ChangeDetectionStrategy,
-  Output,
-  EventEmitter,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { marked } from 'marked';
 
 // Services
 import { ThemeService } from '../../../core/services/theme.services';
+import { MarkdownParserService, ContentBlock as ParserBlock } from '../../../core/services/markdown-parser.service';
 
 // Directives & Components
 import { HighlightDirective } from '../../directives/highlight.directive';
 import { TableTemplateComponent } from '../table-template/table-template.component';
 import { StreamingTextComponent } from '../streaming-text/streaming-text';
 
-export interface ContentBlock {
-  type: 'text' | 'code' | 'image_url' | 'table' | 'image';
-  content: any;
-}
+// Define a combined type that includes Images (handled locally) and Parser blocks
+export type ImageBlock = { type: 'image_url' | 'image'; content: string };
+export type ComponentContentBlock = ParserBlock | ImageBlock;
 
 @Component({
   selector: 'app-content-renderer-component',
@@ -46,19 +42,21 @@ export interface ContentBlock {
 export class ContentRendererComponent implements OnChanges {
   @Input() content?: string | any;
   @Input() sender?: string;
+  @Input() type?: string;
 
   private themeService = inject(ThemeService);
-  private sanitizer = inject(DomSanitizer);
+  private markdownService = inject(MarkdownParserService); // Inject the service
 
   isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
-  blocks: ContentBlock[] = [];
+  
+  // Use the union type for blocks
+  blocks: ComponentContentBlock[] = [];
   private expandedBlocks = new Set<number>(); 
 
   constructor() {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['content']) {
-      // Guard against undefined content
+    if (changes['content'] || changes['type']) {
       if (this.content !== undefined && this.content !== null) {
         this.blocks = this.parse(this.content);
       }
@@ -72,60 +70,36 @@ export class ContentRendererComponent implements OnChanges {
   }
 
   /**
-   * Robust parsing logic using marked.lexer to split Text vs Code
+   * Delegates parsing to MarkdownParserService for text,
+   * but handles Images locally first.
    */
-  parse(content: string | any): ContentBlock[] {
-    // 1. Handle non-string content (already parsed objects)
+  parse(content: string | any): ComponentContentBlock[] {
+    // 1. Explicit Type Handling (Priority for Images)
+    if (this.type === 'image_url' || this.type === 'image') {
+        return [{ type: 'image_url', content: content }];
+    }
+
+    // 2. Handle non-string content (already parsed objects)
     if (typeof content !== 'string') {
       return [{ type: 'text', content: content }];
     }
 
-    // 2. Handle Image URLs (Basic Heuristic)
-    if (content.startsWith('data:image') || (content.startsWith('http') && content.match(/\.(jpeg|jpg|gif|png)$/))) {
+    // 3. Fallback Heuristic for Images (if type wasn't passed)
+    const isImageUrl = content.startsWith('data:image') || 
+                       (content.startsWith('http') && /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(content));
+
+    if (isImageUrl) {
       return [{ type: 'image_url', content: content }];
     }
 
-    // 3. User Messages: Treat as single text block for performance
+    // 4. User Messages: Treat as single text block for performance
     if (this.sender === 'user') {
       return [{ type: 'text', content: content }];
     }
 
-    // 4. AI Messages: Parse Markdown to separate Code Blocks
-    const tokens = marked.lexer(content);
-    const newBlocks: ContentBlock[] = [];
-    
-    // We group consecutive non-code tokens into a single "text" block 
-    // so the StreamingTextComponent can render them together (preserving lists, paragraphs, etc.)
-    let currentTextRaw = '';
-
-    tokens.forEach((token) => {
-      if (token.type === 'code') {
-        // A. If we have accumulated text, push it first
-        if (currentTextRaw) {
-          newBlocks.push({ type: 'text', content: currentTextRaw });
-          currentTextRaw = '';
-        }
-
-        // B. Push the Code Block
-        newBlocks.push({
-          type: 'code',
-          content: {
-            code: token.text,
-            language: token.lang || 'plaintext' // Fallback to avoid 'undefined'
-          }
-        });
-      } else {
-        // C. Accumulate text/other tokens
-        currentTextRaw += token.raw;
-      }
-    });
-
-    // Push any remaining text
-    if (currentTextRaw) {
-      newBlocks.push({ type: 'text', content: currentTextRaw });
-    }
-
-    return newBlocks;
+    // 5. AI Messages: Use the robust MarkdownParserService
+    // This will correctly return 'table', 'code', or 'text' blocks
+    return this.markdownService.parse(content);
   }
 
   isLong(content: any): boolean {
@@ -147,7 +121,7 @@ export class ContentRendererComponent implements OnChanges {
 
   copyCode(code: string): void {
     navigator.clipboard.writeText(code).then(() => {
-      // Optional: Add toast notification here
+      // Optional: Add toast notification logic here
     }).catch(err => {
       console.error('Failed to copy code', err);
     });
