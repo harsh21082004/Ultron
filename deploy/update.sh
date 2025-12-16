@@ -9,10 +9,11 @@ echo "🚀 Starting Update Process..."
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# 2. Update Dependencies (Optional - uncomment if you added new packages)
-# echo "📦 Updating Node dependencies..."
-# cd server && npm install && cd ..
-# cd client && npm install && cd ..
+# 2. Update Dependencies (Uncommented for Client to fix missing builder error)
+# It is safer to install dependencies on every update to ensure the build environment is correct.
+echo "📦 Updating Node dependencies..."
+# cd server && npm install && cd .. 
+cd client && npm install && cd ..
 # echo "🐍 Updating Python dependencies..."
 # cd backend_python && source venv/bin/activate && pip install -r requirements.txt && deactivate && cd ..
 
