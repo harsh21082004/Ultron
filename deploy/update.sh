@@ -13,12 +13,12 @@ git pull origin main
 echo "🛑 Stopping backends to free memory..."
 pm2 stop all || true
 
-# 3. Update Dependencies (Standard Install)
-echo "📦 Updating dependencies..."
-# cd server && npm install && cd .. 
-
+# 3. Update Dependencies (Force Clean Install to fix Linux Binaries)
+echo "🧹 Cleaning Client Dependencies (Fixing esbuild/lightningcss)..."
 cd client
-# Reverted to standard install (Fast) since binary mismatch is fixed
+# Delete these to force npm to download Linux-specific versions
+rm -rf node_modules
+rm -f package-lock.json
 npm install --legacy-peer-deps
 cd ..
 
@@ -26,7 +26,6 @@ cd ..
 echo "🏗️  Rebuilding Angular Frontend..."
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
-# Set CI=true to prevent Angular CLI from asking interactive questions
 export CI=true
 ng build --configuration production
 cd ..
