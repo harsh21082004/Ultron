@@ -32,7 +32,7 @@
 
           <!-- 1. THOUGHT PROCESS / REASONING LOGS -->
           <!-- We check message.reasoning (history) or if it's currently streaming -->
-          @if (message.reasoning?.length) {
+          @if (message.reasoning?.length || message.isStreaming) {
           <details #reasoningDetails class="group/reasoning w-full mb-2" [open]="message.isStreaming">
             <!-- Toggle Header -->
             <summary

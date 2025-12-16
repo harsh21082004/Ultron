@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # --- CORS Config ---
     # Inside fastapi-backend/.env
-    CORS_ORIGINS='["https://13.62.52.71.nip.io", "http://localhost:4200"]'
+    CORS_ORIGINS: List[str] = ["https://13.62.52.71.nip.io", "http://localhost:4200"]
 
     # --- Pydantic Settings Config ---
     # This tells pydantic-settings to load from a .env file

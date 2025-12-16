@@ -28,7 +28,7 @@ import {
   selectIsLoading, 
   selectIsStreaming 
 } from '../../../store/chat/chat.selectors';
-import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state'; // Ensure StreamStatus is imported
+import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state'; 
 import { selectAuthUser } from '../../../store/auth/auth.selectors';
 import { User } from '../../models/user.model';
 
@@ -69,24 +69,22 @@ const PROMPT_SUGGESTIONS = [
 export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChildren('messageElement') private messageElements!: QueryList<ElementRef>;
+  @ViewChild('chatContainer') private chatContainer!: ElementRef; 
   @ViewChild(ChatInputComponent) private chatInputComponent!: ChatInputComponent;
 
   public messages$: Observable<ChatMessage[]>;
   public isLoading$: Observable<boolean>;
   public isStreaming$: Observable<boolean>;
-  
-  // UPDATED: Typed to StreamStatus object (current string + steps array)
   public streamStatus$: Observable<StreamStatus | null>; 
-  
   public user$: Observable<User | null>;
   
   public promptSuggestions = PROMPT_SUGGESTIONS;
   public isMobileView = false;
   
-  // NEW: Toggle state for reasoning logs dropdown
   public showReasoningLogs = false; 
   
-  private scrollBehavior: ScrollLogicalPosition = 'start';
+  // Flag to track if we need to perform the initial scroll-to-bottom
+  private isInitialLoad = true;
 
   private store = inject(Store<AppState>);
   private route = inject(ActivatedRoute);
@@ -103,15 +101,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.isStreaming$ = this.store.select(selectIsStreaming);
     this.user$ = this.store.select(selectAuthUser);
     
-    // Select the full status object from state
     this.streamStatus$ = this.store.select((state: any) => state.chat.streamStatus);
-
-    this.messages$.subscribe(messages => { console.log(messages)})
 
     this.updateIsMobileView();
   }
 
-  // NEW: Toggle method for the UI
   toggleReasoningLogs(): void {
     this.showReasoningLogs = !this.showReasoningLogs;
   }
@@ -131,6 +125,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     ).subscribe(([params, currentLoadedChatId]) => {
       const urlChatId = params.get('id');
       
+      // Reset initial load flag when switching chats so it scrolls to bottom again
+      this.isInitialLoad = true;
+
       if (urlChatId) {
         if (urlChatId !== currentLoadedChatId) {
           this.store.dispatch(ChatActions.loadChatHistory({ chatId: urlChatId }));
@@ -144,8 +141,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    // Only scroll to bottom on the FIRST view update (Initial Load)
     this.messagesSub = this.messageElements.changes.subscribe(() => {
-      this.scrollToLastMessage();
+      if (this.isInitialLoad && this.messageElements.length > 0) {
+        this.scrollToBottom();
+        this.isInitialLoad = false; // Disable auto-scroll-bottom after first load
+      }
     });
   }
 
@@ -159,9 +160,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   public async handleSendMessage(event: ChatMessageEvent): Promise<void> {
-    this.scrollBehavior = 'center';
-    this.scrollToLastMessage();
-    this.showReasoningLogs = false; // Reset logs view on new message
+    this.showReasoningLogs = false;
+    
+    // We do NOT call scrollToBottom here anymore.
+    // Instead, we wait for the new message to render, then scroll TO THAT message.
     
     let finalMessage = event.message;
     let base64Image: string | undefined = undefined;
@@ -187,6 +189,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.processNewMessage(finalMessage, base64Image);
+    
+    // Scroll to the user's message (Top Alignment) after a brief delay for rendering
+    setTimeout(() => this.scrollToLatestUserMessage(), 150);
   }
 
   public handleStopGeneration(): void {
@@ -194,8 +199,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   public handleSuggestionClick(prompt: string): void {
-    this.scrollBehavior = 'start';
     this.processNewMessage(prompt);
+    setTimeout(() => this.scrollToLatestUserMessage(), 150);
   }
 
   public onEditMessage(message: ChatMessage): void {
@@ -236,21 +241,57 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       .join('\n');
   }
 
-  private scrollToLastMessage(): void {
+  /**
+   * Scrolls the container to the absolute bottom.
+   * Used only on initial chat load/refresh.
+   */
+  private scrollToBottom(): void {
     setTimeout(() => {
-      try {
-        const lastElement = this.messageElements.last?.nativeElement;
-        if (lastElement) {
-          lastElement.scrollIntoView({
-            behavior: 'smooth',
-            block: this.scrollBehavior
-          });
-          this.scrollBehavior = 'start';
-        }
-      } catch (err) {
-        console.warn("Error scrolling:", err);
+      if (this.chatContainer) {
+        const element = this.chatContainer.nativeElement;
+        element.scrollTo({
+          top: element.scrollHeight,
+          behavior: 'instant' // Instant for initial load prevents jarring visual
+        });
       }
-    }, 310);
+    }, 100);
+  }
+
+  /**
+   * Finds the latest User message element and scrolls it to the TOP of the view.
+   * This keeps the user's question and the start of the AI response visible.
+   */
+  private scrollToLatestUserMessage(): void {
+    try {
+      // Convert QueryList to Array
+      const elements = this.messageElements.toArray();
+      
+      // We assume the structure is [..., UserMsg, AIMsg] or [..., UserMsg]
+      // We want to find the last message sent by the user.
+      // Since we don't have direct access to 'message' object here easily without index mapping,
+      // we can check the class or assume position based on flow.
+      // However, we can map the elements to the messages array index.
+      
+      // Better approach: Scroll the container to the position of the 2nd to last element (User) 
+      // or last element if AI hasn't started rendering blocks yet.
+      
+      if (elements.length > 0) {
+        // Typically the user message is the last one added before the AI placeholder.
+        // If 'sendMessage' adds User + AI Placeholder immediately, the user msg is at index length-2.
+        
+        const userMsgIndex = elements.length >= 2 ? elements.length - 2 : elements.length - 1;
+        const targetElement = elements[userMsgIndex]?.nativeElement;
+
+        if (targetElement) {
+          targetElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start' // Aligns top of message with top of scroll container
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Scroll to user message failed:", err);
+    }
   }
 
   private fileToBase64(file: File): Promise<string> {
