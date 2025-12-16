@@ -1,9 +1,10 @@
 module.exports = {
   apps: [
     {
-      name: "server", // Updated name as requested
-      script: "./server/index.js", 
-      env_file: "./server/.env", // Explicitly load .env
+      name: "server", 
+      cwd: "./server", 
+      script: "index.js", 
+      env_file: ".env", 
       env: {
         NODE_ENV: "production",
         PORT: 3000,
@@ -11,14 +12,17 @@ module.exports = {
     },
     {
       name: "fastapi-backend",
-      // CRITICAL FIX: Use the python inside the venv, not the system python
-      script: "./venv/bin/python", 
+      // CRITICAL FIX: Run inside the 'app' folder where main.py exists
+      cwd: "./fastapi-backend/app", 
+      // Point to the python executable in the PARENT folder's venv
+      script: "../venv/bin/python", 
       args: "-m uvicorn main:app --host 0.0.0.0 --port 8000",
-      cwd: "./fastapi-backend",
-      interpreter: "none", // We provide the binary path in 'script', so no interpreter needed
-      env_file: "./fastapi-backend/.env",
+      interpreter: "none", 
+      // Load the .env file from the PARENT folder
+      env_file: "../.env", 
       env: {
-        PORT: 8000
+        PORT: 8000,
+        PYTHONPATH: "."
       }
     }
   ]
