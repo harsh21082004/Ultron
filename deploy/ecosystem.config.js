@@ -3,18 +3,19 @@ module.exports = {
     {
       name: "node-backend",
       script: "./server/index.js", 
+      env_file: "./server/.env",
       env: {
         NODE_ENV: "production",
         PORT: 3000,
-        MONGO_URI: "mongodb://localhost:27017/chat-db"
       }
     },
     {
-      name: "python-ai-backend",
+      name: "fastapi-backend",
       script: "python3",
       args: "-m uvicorn main:app --host 0.0.0.0 --port 8000",
-      cwd: "./backend_python",
+      cwd: "./fastapi-backend",
       interpreter: "none",
+      env_file: "./fastapi-backend/.env",
       env: {
         PORT: 8000
       }
