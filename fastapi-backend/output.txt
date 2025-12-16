@@ -3125,4 +3125,4 @@ VALUES
   (3, 'Bob Johnson', 21, 78.00, 'Engineering'),
   (4, 'Alice Brown', 20, 92.00, 'Computer Science'),
   (5, 'Mike Davis', 23, 88.00, 'Mathematics');
-```
+```**Hello! I'm Ultron, your AI assistant.** How can I assist you today?

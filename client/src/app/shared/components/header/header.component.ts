@@ -69,7 +69,6 @@ export class HeaderComponent {
     this.user$ = this.store.select(state => state.auth.user);
     this.loading$ = this.store.select(state => state.auth.loading);
     this.isMobileView = window.innerWidth <= 840;
-    console.log(window.innerWidth)
   }
   // A computed signal to easily check if the current mode is dark
   isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');

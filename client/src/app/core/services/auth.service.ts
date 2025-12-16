@@ -22,7 +22,7 @@ export class AuthService {
   private snackbar = inject(SnackbarService);
 
   constructor (){
-    console.log(this.apiUrl + '/login');
+    // console.log(this.apiUrl + '/login');
   }
 
 

@@ -154,8 +154,6 @@ export class MarkdownParserService {
    * Parse a markdown table (simple). Returns { headers, rows, title? } or null.
    */
   private parseTable(markdown: string): TableContent | null {
-
-    console.log(markdown)
     // keep only lines that look like table rows
     const lines = markdown
       .split('\n')

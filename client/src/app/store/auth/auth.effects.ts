@@ -38,7 +38,6 @@ export class AuthEffects {
         if (!token || token === 'undefined') { // Check for the bad token
           return of(AuthActions.initSessionFailure());
         }
-        console.log("Init session")
 
         return this.authService.getUserDetails(token).pipe(
 
@@ -80,11 +79,6 @@ export class AuthEffects {
       ofType(AuthActions.login),
       exhaustMap(action =>
         this.authService.login({ email: action.email, password: action.password }).pipe(
-          tap(
-            response => {
-              console.log('Login response:', response);
-            },
-          ),
           map(response => {
             const userWithToken: User = {
               ...response.user,

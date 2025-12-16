@@ -9,8 +9,6 @@ const saveChat = async (req, res) => {
     const { chatId, messages, title } = req.body;
     const userId = req.user.id; // From 'protect' middleware
 
-    console.log(messages)
-
     if (!chatId || !messages || messages.length === 0) {
       return res.status(400).json({ message: 'Missing required chat data.' });
     }

@@ -28,7 +28,7 @@ export class PinkButtonComponent {
   @Input() isLoading: any = false;
 
   constructor(){
-    console.log(this.isLoading)
+    // console.log(this.isLoading)
   }
 
 
