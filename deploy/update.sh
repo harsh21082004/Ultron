@@ -9,21 +9,20 @@ echo "🚀 Starting Update Process..."
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# 2. Update Dependencies
-echo "📦 Updating Node dependencies..."
+# 2. Free up RAM for the build
+echo "🛑 Stopping backends to free memory..."
+pm2 stop all || true
+
+# 3. Update Dependencies (Standard Install)
+echo "📦 Updating dependencies..."
 # cd server && npm install && cd .. 
 
-echo "🧹 Fixing Client Dependencies (Deep Clean)..."
 cd client
-# Remove lockfile to force Linux resolution
-rm -f package-lock.json
-# Remove corrupted node_modules from the crash
-rm -rf node_modules
-# Install dependencies fresh
+# Reverted to standard install (Fast) since binary mismatch is fixed
 npm install --legacy-peer-deps
 cd ..
 
-# 3. Rebuild Angular Frontend
+# 4. Rebuild Angular Frontend
 echo "🏗️  Rebuilding Angular Frontend..."
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
@@ -32,14 +31,14 @@ export CI=true
 ng build --configuration production
 cd ..
 
-# 4. Deploy Frontend to Nginx
+# 5. Deploy Frontend to Nginx
 echo "deployment... Copying files to Nginx..."
 # Clean old files
 sudo rm -rf /var/www/html/*
 # Copy new build (Ensure 'client' matches your dist folder name)
 sudo cp -r client/dist/client/* /var/www/html/
 
-# 5. Restart Backends
+# 6. Restart Backends
 echo "🔄 Restarting Backend Servers..."
 pm2 restart all
 
