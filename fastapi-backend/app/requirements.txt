@@ -10,7 +10,11 @@ langchain-core
 langchain-groq
 langchain-community
 langchain-google-genai
+langchain-google-community
 google-generativeai
-duckduckgo-search
+google-api-python-client
+duckduckgo-search>=5.0.0
 Pillow
+langchain-pinecone
 pinecone-client
+groq
