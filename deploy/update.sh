@@ -9,26 +9,25 @@ echo "🚀 Starting Update Process..."
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# 2. Update Dependencies (Uncommented for Client to fix missing builder error)
-# It is safer to install dependencies on every update to ensure the build environment is correct.
+# 2. Update Dependencies
 echo "📦 Updating Node dependencies..."
 # cd server && npm install && cd .. 
 
-# Clean install for client to ensure Linux binaries (lightningcss) are downloaded correctly
-echo "🧹 Cleaning client node_modules to fix binary mismatch..."
-cd client 
+echo "🧹 Fixing Client Dependencies (Deep Clean)..."
+cd client
+# Remove lockfile to force Linux resolution
+rm -f package-lock.json
+# Remove corrupted node_modules from the crash
 rm -rf node_modules
-npm install --legacy-peer-deps 
+# Install dependencies fresh
+npm install --legacy-peer-deps
 cd ..
-
-# echo "🐍 Updating Python dependencies..."
-# cd backend_python && source venv/bin/activate && pip install -r requirements.txt && deactivate && cd ..
 
 # 3. Rebuild Angular Frontend
 echo "🏗️  Rebuilding Angular Frontend..."
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
-# Set CI=true to prevent Angular CLI from asking interactive questions (like autocompletion)
+# Set CI=true to prevent Angular CLI from asking interactive questions
 export CI=true
 ng build --configuration production
 cd ..
