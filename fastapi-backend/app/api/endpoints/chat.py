@@ -103,7 +103,7 @@ async def handle_chat_stream(
     request: StreamRequest,
     chat_service: ChatService = ChatServiceDep,
 ):
-    async def event_generator():
+    async def event_generator(): 
         try:
             final_image = request.image
             
