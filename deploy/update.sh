@@ -13,8 +13,14 @@ git pull origin main
 # It is safer to install dependencies on every update to ensure the build environment is correct.
 echo "📦 Updating Node dependencies..."
 # cd server && npm install && cd .. 
-# Added --legacy-peer-deps to fix ERESOLVE dependency conflicts
-cd client && npm install --legacy-peer-deps && cd ..
+
+# Clean install for client to ensure Linux binaries (lightningcss) are downloaded correctly
+echo "🧹 Cleaning client node_modules to fix binary mismatch..."
+cd client 
+rm -rf node_modules
+npm install --legacy-peer-deps 
+cd ..
+
 # echo "🐍 Updating Python dependencies..."
 # cd backend_python && source venv/bin/activate && pip install -r requirements.txt && deactivate && cd ..
 
