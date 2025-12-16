@@ -8,3 +8,4 @@ pydantic-settings
 duckduckgo-search
 langchain-community
 ddgs
+Pillow
