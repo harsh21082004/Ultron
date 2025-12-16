@@ -22,6 +22,8 @@ cd client && npm install --legacy-peer-deps && cd ..
 echo "🏗️  Rebuilding Angular Frontend..."
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
+# Set CI=true to prevent Angular CLI from asking interactive questions (like autocompletion)
+export CI=true
 ng build --configuration production
 cd ..
 
