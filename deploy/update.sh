@@ -9,31 +9,35 @@ echo "🚀 Starting Update Process..."
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# 2. Update Dependencies (Uncommented for Client to fix missing builder error)
-# It is safer to install dependencies on every update to ensure the build environment is correct.
-echo "📦 Updating Node dependencies..."
-# cd server && npm install && cd .. 
-# Added --legacy-peer-deps to fix ERESOLVE dependency conflicts
-cd client && npm install --legacy-peer-deps && cd ..
-# echo "🐍 Updating Python dependencies..."
-# cd backend_python && source venv/bin/activate && pip install -r requirements.txt && deactivate && cd ..
+# 2. Free up RAM for the build
+echo "🛑 Stopping backends to free memory..."
+pm2 stop all || true
 
-# 3. Rebuild Angular Frontend
+# 3. Update Dependencies (Force Clean Install to fix Linux Binaries)
+echo "🧹 Cleaning Client Dependencies (Fixing esbuild/lightningcss)..."
+cd client
+# Delete these to force npm to download Linux-specific versions
+rm -rf node_modules
+rm -f package-lock.json
+npm install --legacy-peer-deps
+cd ..
+
+# 4. Rebuild Angular Frontend
 echo "🏗️  Rebuilding Angular Frontend..."
-export CI=true
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
+export CI=true
 ng build --configuration production
 cd ..
 
-# 4. Deploy Frontend to Nginx
+# 5. Deploy Frontend to Nginx
 echo "deployment... Copying files to Nginx..."
 # Clean old files
 sudo rm -rf /var/www/html/*
 # Copy new build (Ensure 'client' matches your dist folder name)
 sudo cp -r client/dist/client/* /var/www/html/
 
-# 5. Restart Backends
+# 6. Restart Backends
 echo "🔄 Restarting Backend Servers..."
 pm2 restart all
 
