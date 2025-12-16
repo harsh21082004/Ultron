@@ -20,6 +20,7 @@ cd client && npm install --legacy-peer-deps && cd ..
 
 # 3. Rebuild Angular Frontend
 echo "🏗️  Rebuilding Angular Frontend..."
+export CI=true
 cd client
 export NODE_OPTIONS="--max-old-space-size=4096"
 ng build --configuration production
