@@ -1,11 +1,20 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+// --- 1. NEW SOURCE SCHEMA ---
+const SourceSchema = new Schema({
+    title: { type: String },
+    uri: { type: String },
+    icon: { type: String },
+    // Optional: stores which sentence indices correlate to this source for inline citations
+    citationIndices: { type: [Number], default: [] } 
+}, { _id: false });
+
 const ContentBlockSchema = new Schema({
     type: {
         type: String,
         required: true,
-        enum: ['text', 'code', 'image', 'image_url', 'video', 'table'] // Added image_url
+        enum: ['text', 'code', 'image', 'image_url', 'video', 'table']
     },
     value: {
         type: Schema.Types.Mixed,
@@ -26,13 +35,18 @@ const MessageSchema = new Schema({
     },
     content: [ContentBlockSchema],
     
-    // NEW: Fields to persist the "Thinking" process
+    // Fields to persist the "Thinking" process
     status: { 
         type: String, 
         default: 'Completed' 
     },
     reasoning: {
-        type: [String], // Array of strings for step-by-step logs
+        type: [String], 
+        default: []
+    },
+    // --- 2. ADDED SOURCES FIELD ---
+    sources: {
+        type: [SourceSchema],
         default: []
     }
 }, { 

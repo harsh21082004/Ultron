@@ -7,11 +7,11 @@ import * as ChatActions from './chat.actions';
 import { AppState } from '..';
 import { selectChatMessages } from './chat.selectors';
 import { selectAuthUser } from '../auth/auth.selectors';
-import { ChatApiService } from '../../core/services/chat-api.services';
 import { ChatDbService } from '../../core/services/chat-db.service';
 import { AudioApiService } from '../../core/services/audio-api.service';
 import { VisionApiService } from '../../core/services/vision-api.service';
 import { TranslateApiService } from '../../core/services/translate-api.service';
+import { ChatApiService } from '../../core/services/chat-api.services';
 
 @Injectable()
 export class ChatEffects {
@@ -35,7 +35,7 @@ export class ChatEffects {
     );
   });
 
-  // --- UPDATED: Handles Status, Logs (Thoughts), and Text events ---
+  // --- UPDATED: Handles Status, Logs (Thoughts), Sources, and Text events ---
   sendMessage$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.sendMessage),
@@ -46,14 +46,30 @@ export class ChatEffects {
             if (event.type === 'status') {
               return ChatActions.updateStreamStatus({ status: event.value });
             } 
-            // 2. LOG / REASONING (e.g. "Identifying Intent...") -> FIX ADDED HERE
+            // 2. LOG / REASONING (e.g. "Identifying Intent...")
             else if (event.type === 'log') {
               return ChatActions.addStreamLog({ log: event.value });
             } 
-            // 3. TEXT CHUNK (The actual answer) 
+            // 3. SOURCES (JSON string of sources) -> NEW
+            else if (event.type === 'sources') {
+              console.log(event)
+              try {
+                // The value is expected to be a JSON string like '[{"title": "...", "uri": "..."}]'
+                const sources = JSON.parse(event.value);
+                return ChatActions.updateStreamSources({ sources });
+              } catch (e) {
+                console.warn('Failed to parse sources JSON:', event.value);
+                // Fallback to logging it if parsing fails
+                return ChatActions.addStreamLog({ log: 'Received sources but failed to parse.' });
+              }
+            }
+            // 4. TEXT CHUNK (The actual answer) 
             else {
               return ChatActions.receiveStreamChunk({ chunk: event.value });
             }
+          }),
+          tap((event)=> {
+            console.log(event)
           }),
           takeUntil(this.actions$.pipe(ofType(ChatActions.stopStream))),
           endWith(ChatActions.streamComplete({ chatId: action.chatId })),

@@ -4,7 +4,6 @@
 .user-text-simple {
     margin: 0;
     padding: 0;
-    line-height: 1.4; /* MODIFIED: Reduced from 1.5 for tighter look */
     white-space: pre-wrap;
     word-break: break-word;
 }
@@ -49,16 +48,12 @@ code::-webkit-scrollbar {
 
 :host ::ng-deep .prose {
     /* MODIFIED: Standardized root line-height and margin */
-    line-height: normal; 
     margin: 0;
-    white-space: pre-wrap;
     word-break: break-word;
 
     /* Inner prose container (if nested) */
     .prose {
-        line-height: normal;
         margin: 0;
-        white-space: pre-wrap;
         word-break: break-word;
     }
 
@@ -66,8 +61,7 @@ code::-webkit-scrollbar {
     h1, h2, h3, h4, h5, h6 {
         margin-top: 0.5em; /* Added slight top space for separation */
         margin-bottom: 0.25em;
-        font-weight: 600; /* Slightly bolder for hierarchy */
-        line-height: 1.2;
+        font-weight: 600;
     }
     h1 { font-size: 1.25rem; }
     h2 { font-size: 1.15rem; }
@@ -75,8 +69,7 @@ code::-webkit-scrollbar {
 
     /* PARAGRAPHS */
     p {
-        margin-bottom: 0.5em; /* Kept tight */
-        line-height: 1.45;    /* Optimized for reading */
+        margin-bottom: 0.5em;   /* Optimized for reading */
     }
     /* Remove bottom margin from the last paragraph to avoid extra bubble space */
     p:last-child {
@@ -88,7 +81,6 @@ code::-webkit-scrollbar {
         margin-left: 1.25em;
         margin-bottom: 0.5em;
         list-style-position: outside;
-        line-height: 0.5;
 
         /* Deep Nesting Reset: Fixes gaps when ul/ol is inside an li */
         ul, ol {
@@ -108,8 +100,7 @@ code::-webkit-scrollbar {
     ol ol ol { list-style-type: lower-roman; }
     
     li {
-        margin-bottom: 0; /* Compact items */
-        line-height: 1.4;
+        margin-bottom: 0; 
         padding-left: 0.25em;
     }
     
@@ -158,7 +149,6 @@ pre,
 :host ::ng-deep code.dark-theme {
     background: var(--mat-menu-container-color) !important;
     color: #abb2bf;
-    line-height: 1.5; /* Code needs slightly more breathing room */
 }
 
 :host ::ng-deep code.dark-theme .hljs-comment,
@@ -231,7 +221,6 @@ pre,
 :host ::ng-deep code.light-theme {
     background: transparent !important;
     color: #24292e;
-    line-height: 1.5;
 }
 
 :host ::ng-deep code.light-theme .hljs-comment,
@@ -313,7 +302,6 @@ pre,
   font-weight: 500; /* Not too bold */
   margin-top: 1em;
   margin-bottom: 0.5em;
-  line-height: normal;
 }
 
 :host ::ng-deep .prose strong {

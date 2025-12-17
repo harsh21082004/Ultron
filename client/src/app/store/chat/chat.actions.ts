@@ -1,5 +1,5 @@
 import { createAction, props } from '@ngrx/store';
-import { ChatMessage } from './chat.state';
+import { ChatMessage, Source } from './chat.state';
 
 // --- ACTIONS FOR LOADING HISTORY ---
 export const loadChatHistory = createAction(
@@ -72,6 +72,12 @@ export const updateStreamStatus = createAction(
 export const addStreamLog = createAction(
   '[Chat] Add Stream Log',
   props<{ log: string }>()
+);
+
+// NEW: Update the sources for the current stream
+export const updateStreamSources = createAction(
+  '[Chat] Update Stream Sources',
+  props<{ sources: Source[] }>()
 );
 
 export const streamComplete = createAction(

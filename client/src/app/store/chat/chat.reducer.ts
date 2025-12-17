@@ -111,13 +111,38 @@ export const chatReducer = createReducer(
     const lastMessage = { ...updatedMessages[lastMsgIndex] };
 
     // 3. Append the new log to the reasoning array
-    // We check if reasoning exists; if not, initialize it.
     const currentReasoning = lastMessage.reasoning ? [...lastMessage.reasoning] : [];
     currentReasoning.push(log);
 
     lastMessage.reasoning = currentReasoning;
     
     // 4. Update the array with the modified message
+    updatedMessages[lastMsgIndex] = lastMessage;
+
+    return {
+      ...state,
+      messages: updatedMessages
+    };
+  }),
+
+  // --- NEW: Handle Sources Updates (Fix for Sources not showing) ---
+  on(ChatActions.updateStreamSources, (state, { sources }) => {
+    // If no messages exist, we can't attach sources
+    if (state.messages.length === 0) {
+      return state;
+    }
+
+    // 1. Copy the messages array
+    const updatedMessages = [...state.messages];
+    const lastMsgIndex = updatedMessages.length - 1;
+
+    // 2. Copy the last message
+    const lastMessage = { ...updatedMessages[lastMsgIndex] };
+
+    // 3. Attach sources to the message
+    lastMessage.sources = sources;
+
+    // 4. Update the array
     updatedMessages[lastMsgIndex] = lastMessage;
 
     return {
@@ -161,7 +186,7 @@ export const chatReducer = createReducer(
     };
   }),
 
-  on(ChatActions.streamComplete, (state) => {
+  on(ChatActions.streamComplete, (state, { chatId }) => {
     if (state.messages.length === 0) return state;
     
     const messages = [...state.messages];
@@ -230,6 +255,7 @@ export const chatReducer = createReducer(
     ...state,
     error: error,
   })),
+
   // --- NEW SEARCH HANDLERS ---
   on(ChatActions.searchChats, (state) => ({
     ...state,

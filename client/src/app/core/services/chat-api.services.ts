@@ -2,11 +2,24 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ChatMessage } from '../../store/chat/chat.state';
-import { environment } from '../../../environments/environment';
-import { envType } from '../../shared/models/environment';
+// import { environment } from '../../../environments/environment';
+// import { envType } from '../../shared/models/environment';
+
+// --- LOCAL ENVIRONMENT FIX ---
+// Detects if running on localhost to switch between direct backend access vs Nginx proxy
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+const environment = {
+  // If local, use direct FastAPI port (8000). If prod, use Nginx proxy path.
+  fastApiUrl: isLocal ? 'http://localhost:8000/api/py' : '/api/py', 
+  apiUrl: '/api'
+};
+
+// Mock type for the local environment definition
+type envType = typeof environment;
 
 export interface StreamEvent {
-  type: 'text' | 'status' | 'log';
+  type: 'text' | 'status' | 'log' | 'sources';
   value: string;
 }
 
@@ -15,7 +28,7 @@ export interface StreamEvent {
 })
 export class ChatApiService {
   private http = inject(HttpClient);
-  private apiUrl: string = `${(environment as envType).fastApiUrl}/chat`;
+  private apiUrl: string = `${environment.fastApiUrl}/chat`;
 
   private getAuthHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -26,7 +39,7 @@ export class ChatApiService {
   }
 
   private getFetchAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || '';
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -62,8 +75,7 @@ export class ChatApiService {
 
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
 
-        // --- CRITICAL FIX: Define state variable OUTSIDE the loop ---
-        // This ensures we remember the active tag (e.g. __THOUGHT__) across multiple chunks.
+        // State to track the active tag across chunks
         let currentTag: string | null = null;
 
         while (true) {
@@ -73,56 +85,54 @@ export class ChatApiService {
             break;
           }
 
-          // Regex to split by tags but keep them in the array
-          const parts = value.split(/(__STATUS__:)|(__THOUGHT__:)|(__SOURCES__:)/).filter(Boolean);
+          // --- ROBUST PARSING LOGIC ---
+          // Use lookahead regex to split string at the start of any new tag
+          // This keeps the tag with its content in the same part
+          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__):)/).filter(Boolean);
 
           for (const part of parts) {
-            // 1. Check if the part is a Tag Marker
-            if (part === '__STATUS__:') {
+            let processedPart = part;
+            let newTagFound = false;
+            
+            // Check if this part starts with a known tag
+            if (part.startsWith('__STATUS__:')) {
               currentTag = 'status';
-              continue;
-            }
-            if (part === '__THOUGHT__:') {
+              processedPart = part.replace('__STATUS__:', '');
+              newTagFound = true;
+            } else if (part.startsWith('__THOUGHT__:')) {
               currentTag = 'log';
-              continue;
-            }
-            if (part === '__SOURCES__:') {
-              currentTag = 'log'; // Treat sources as logs/thoughts
-              continue;
+              processedPart = part.replace('__THOUGHT__:', '');
+              newTagFound = true;
+            } else if (part.startsWith('__SOURCES__:')) {
+              currentTag = 'sources'; // Separate type for sources so UI can parse JSON and render cards
+              processedPart = part.replace('__SOURCES__:', '');
+              newTagFound = true;
+            } 
+
+            // FIX: If we are in a special tag mode (status/log/sources), but the current part 
+            // does NOT start with a new tag, it implies the stream has transitioned 
+            // back to the standard text response (which often comes without a tag).
+            // We force a reset to text mode here to prevent "swallowing" the answer into the logs.
+            if (!newTagFound && currentTag !== null) {
+               currentTag = null;
             }
 
-            // 2. Process Content based on the active Tag
-            if (currentTag === 'status') {
-              subscriber.next({ type: 'status', value: part.trim() });
-              // Status is usually short/immediate, so we can reset or keep it.
-              // Resetting is safer if status is always one-line.
-              currentTag = null; 
-            } 
-            else if (currentTag === 'log') {
-              subscriber.next({ type: 'log', value: part.trim() });
-              // Do NOT reset currentTag here. Thoughts can span multiple chunks.
-              // The backend usually sends a newline or next tag to break it, 
-              // but for now, we assume logs flow until text resumes.
-              // Actually, if the next part is text, it will just append to log if we don't reset.
-              // For "Thinking...", it's usually followed by the real answer.
-              // If your backend implies "Text starts when tags end", we need a trigger.
-              // But usually, the logs come *before* the text.
-              // If the text starts, it won't have a tag. 
-              // So we might need to rely on the next tag or specific backend behavior.
-              // For this implementation, we'll keep it simple: 
-              // If we hit a tag, we stay in that tag mode for the current 'part'.
-              // BUT: To be safe for mixed streams, we often reset after processing a non-empty part
-              // UNLESS we know thoughts are multi-chunk. 
-              // Let's stick to the previous robust logic:
-              // For now, let's assume thoughts are self-contained lines or chunks.
-              // If we strictly want to prevent leakage, we reset.
-              currentTag = null; 
-            } 
-            else {
-              // No tag active, so it's regular text
-              if (part.length > 0) {
-                subscriber.next({ type: 'text', value: part });
-              }
+            // Logic: If currentTag is set, this text belongs to that tag (e.g. status or thought).
+            // If NO tag is set (or we just switched context implied by stream structure), it's the AI response.
+            
+            const cleanValue = processedPart; 
+
+            if (cleanValue) {
+                if (currentTag === 'status') {
+                    subscriber.next({ type: 'status', value: cleanValue.trim() });
+                } else if (currentTag === 'log') {
+                    subscriber.next({ type: 'log', value: cleanValue.trim() });
+                } else if (currentTag === 'sources') {
+                    subscriber.next({ type: 'sources', value: cleanValue.trim() });
+                } else {
+                    // No tag active -> It's the AI response
+                    subscriber.next({ type: 'text', value: cleanValue });
+                }
             }
           }
         }

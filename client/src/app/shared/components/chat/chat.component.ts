@@ -263,22 +263,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   private scrollToLatestUserMessage(): void {
     try {
-      // Convert QueryList to Array
       const elements = this.messageElements.toArray();
-      
-      // We assume the structure is [..., UserMsg, AIMsg] or [..., UserMsg]
-      // We want to find the last message sent by the user.
-      // Since we don't have direct access to 'message' object here easily without index mapping,
-      // we can check the class or assume position based on flow.
-      // However, we can map the elements to the messages array index.
-      
-      // Better approach: Scroll the container to the position of the 2nd to last element (User) 
-      // or last element if AI hasn't started rendering blocks yet.
       
       if (elements.length > 0) {
         // Typically the user message is the last one added before the AI placeholder.
-        // If 'sendMessage' adds User + AI Placeholder immediately, the user msg is at index length-2.
-        
         const userMsgIndex = elements.length >= 2 ? elements.length - 2 : elements.length - 1;
         const targetElement = elements[userMsgIndex]?.nativeElement;
 

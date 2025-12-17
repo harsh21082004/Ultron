@@ -5,6 +5,14 @@ export interface ContentBlock {
   language?: string;
 }
 
+// NEW: Interface for Source Citations
+export interface Source {
+  title: string;
+  uri: string;
+  icon?: string;
+  citationIndices?: number[];
+}
+
 export interface ChatMessage {
   _id: string;
   sender: 'user' | 'ai';
@@ -16,6 +24,9 @@ export interface ChatMessage {
   // NEW: Persist reasoning steps and status in the message itself
   status?: string; 
   reasoning?: string[]; 
+  
+  // NEW: Array of sources used for this message
+  sources?: Source[];
 }
 
 // Structured Status for Real-time Thinking UI
