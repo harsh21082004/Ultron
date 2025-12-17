@@ -1,27 +1,34 @@
-import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, ElementRef, HostListener, Input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { Source } from '../../../store/chat/chat.state';
-import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'app-citation-button',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIcon],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   template: `
     @if (source) {
-      <div class="citation-container" (mouseenter)="isHovered = true" (mouseleave)="isHovered = false">
+      <div class="citation-container" 
+           (mouseenter)="onMouseEnter()" 
+           (mouseleave)="onMouseLeave()">
         
-        <button matIconButton aria-label="Example icon button with a vertical three dot icon" 
-                (click)="openSource()"
+        <button mat-icon-button 
                 class="action-btn"
-                >
+                aria-label="View Source" 
+                (click)="openSource()">
           <mat-icon class="rotate-135 small-icon">link</mat-icon>
         </button>
 
         <!-- Custom Rich Tooltip -->
+        <!-- Added [ngStyle] for dynamic fixed positioning and [class] for arrow direction -->
         @if (isHovered) {
-          <div class="rich-tooltip animate-fade-in">
+          <div class="rich-tooltip animate-fade-in" 
+               [ngStyle]="tooltipStyles"
+               [class.tooltip-above]="placement === 'above'"
+               [class.tooltip-below]="placement === 'below'">
+            
             <!-- Tooltip Icon -->
             <img [src]="source.icon || 'assets/icons/web_asset.svg'" 
                  class="tooltip-icon" 
@@ -43,7 +50,6 @@ import { MatIcon } from '@angular/material/icon';
       display: inline-block;
       vertical-align: middle;
       margin: 0 2px;
-      position: relative; // Context for absolute tooltip
     }
 
     .citation-container {
@@ -51,80 +57,76 @@ import { MatIcon } from '@angular/material/icon';
       display: inline-flex;
     }
 
-    .citation-btn {
-      min-width: unset !important;
-      width: auto !important;
+    .action-btn {
+      width: 24px !important;
       height: 24px !important;
-      padding: 0 8px !important;
-      border-radius: 12px !important;
-      line-height: 24px !important;
-      font-size: 0.75rem !important;
-      display: inline-flex !important;
+      padding: 0 !important;
+      display: flex !important;
       align-items: center;
-      gap: 6px;
-      background-color: #e3e8ee; 
+      justify-content: center;
+      background-color: #e3e8ee;
       color: #374151;
-      box-shadow: none !important;
-
+      border-radius: 50%; // Circular button for the icon
+      
       &:hover {
         background-color: #d1d9e2;
-        transform: translateY(-1px);
       }
     }
 
-    .btn-icon {
-      width: 12px;
-      height: 12px;
-      border-radius: 2px;
-    }
-
-    .index {
-      font-weight: 600;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    .small-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
 
     // --- Rich Tooltip Styles ---
     .rich-tooltip {
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      margin-bottom: 8px;
+      position: fixed; // FIXED: Breaks out of overflow:hidden containers
+      z-index: 10000;  // Ensure it sits on top of everything
       
-      background-color: #1f2937; // Dark gray bg
+      background-color: #1f2937;
       color: white;
       padding: 8px 12px;
       border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       
       display: flex;
-      align-items: flex-start; // Align top for multi-line titles
+      align-items: flex-start;
       gap: 10px;
       min-width: 200px;
       max-width: 300px;
-      pointer-events: none; // Let clicks pass through if needed
+      pointer-events: none;
 
-      // Triangle Arrow
+      // Base Arrow (hidden by default, shown by specific class)
       &::after {
         content: '';
         position: absolute;
-        top: 100%;
         left: 50%;
         margin-left: -5px;
         border-width: 5px;
         border-style: solid;
-        border-color: #1f2937 transparent transparent transparent;
       }
+    }
+
+    // Arrow pointing DOWN (Tooltip is ABOVE)
+    .tooltip-above::after {
+      top: 100%;
+      border-color: #1f2937 transparent transparent transparent;
+    }
+
+    // Arrow pointing UP (Tooltip is BELOW)
+    .tooltip-below::after {
+      bottom: 100%;
+      border-color: transparent transparent #1f2937 transparent;
     }
 
     .tooltip-icon {
       width: 16px;
       height: 16px;
       border-radius: 3px;
-      margin-top: 2px; // Visual alignment with title
+      margin-top: 2px;
       flex-shrink: 0;
-      background: white; // Ensure favicon visibility
+      background: white;
     }
 
     .tooltip-content {
@@ -142,7 +144,7 @@ import { MatIcon } from '@angular/material/icon';
 
     .tooltip-url {
       font-size: 0.65rem;
-      color: #9ca3af; // Light gray
+      color: #9ca3af;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -154,13 +156,13 @@ import { MatIcon } from '@angular/material/icon';
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translate(-50%, 4px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     // Dark Theme Override
     :host-context(.dark-theme) {
-      .citation-btn {
+      .action-btn {
         background-color: #374151;
         color: #e5e7eb;
         &:hover { background-color: #4b5563; }
@@ -168,29 +170,85 @@ import { MatIcon } from '@angular/material/icon';
       .rich-tooltip {
         background-color: #000;
         border: 1px solid #333;
-        &::after { border-color: #000 transparent transparent transparent; }
       }
+      .tooltip-above::after { border-color: #000 transparent transparent transparent; }
+      .tooltip-below::after { border-color: transparent transparent #000 transparent; }
     }
-    .action-btn, .action-btn span{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-}
-
-.small-icon{
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-}
   `]
 })
 export class CitationButtonComponent {
   @Input() source?: Source;
   @Input() index: number = 0;
-
+  
   isHovered = false;
+  tooltipStyles: { [key: string]: string } = {};
+  placement: 'above' | 'below' = 'above';
+  
+  constructor(private elementRef: ElementRef) {}
+
+  onMouseEnter() {
+    this.updatePosition();
+    this.isHovered = true;
+  }
+
+  onMouseLeave() {
+    this.isHovered = false;
+  }
+
+  // Update position on scroll too, in case user scrolls while hovering
+  @HostListener('window:scroll')
+  onScroll() {
+    if (this.isHovered) {
+      this.updatePosition();
+    }
+  }
+
+  private updatePosition() {
+    const rect = this.elementRef.nativeElement.getBoundingClientRect();
+    const tooltipHeight = 80; // Estimated height including arrow
+    const gap = 8;
+    
+    // Check space above
+    const spaceAbove = rect.top;
+    
+    // Default to 'above' unless space is tight (< 100px from top)
+    if (spaceAbove < 100) {
+      this.placement = 'below';
+      this.tooltipStyles = {
+        'top': `${rect.bottom + gap}px`,
+        'left': `${rect.left + (rect.width / 2)}px`,
+        'transform': 'translateX(-50%)'
+      };
+    } else {
+      this.placement = 'above';
+      this.tooltipStyles = {
+        'top': `${rect.top - gap}px`,
+        'left': `${rect.left + (rect.width / 2)}px`,
+        'transform': 'translateX(-50%) translateY(-100%)'
+      };
+    }
+
+    // Horizontal Boundary Check (Prevent clipping on left/right edges)
+    const centerX = rect.left + (rect.width / 2);
+    const windowWidth = window.innerWidth;
+    const halfTooltipWidth = 150; // Approx
+
+    if (centerX < halfTooltipWidth) {
+      // Too close to left edge -> Shift right
+      this.tooltipStyles['left'] = `${rect.left}px`;
+      this.tooltipStyles['transform'] = this.placement === 'above' 
+        ? 'translateY(-100%)' 
+        : 'none';
+      // Note: Arrow might be slightly off-center in this edge case, which is acceptable
+    } else if (centerX > windowWidth - halfTooltipWidth) {
+      // Too close to right edge -> Shift left
+      this.tooltipStyles['left'] = 'auto';
+      this.tooltipStyles['right'] = `${windowWidth - rect.right}px`;
+      this.tooltipStyles['transform'] = this.placement === 'above' 
+        ? 'translateY(-100%)' 
+        : 'none';
+    }
+  }
 
   openSource() {
     if (this.source?.uri) {
