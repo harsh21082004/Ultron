@@ -22,7 +22,6 @@ import { Source } from '../../../store/chat/chat.state';
         </button>
 
         <!-- Custom Rich Tooltip -->
-        <!-- Added [ngStyle] for dynamic fixed positioning and [class] for arrow direction -->
         @if (isHovered) {
           <div class="rich-tooltip animate-fade-in" 
                [ngStyle]="tooltipStyles"
@@ -38,6 +37,7 @@ import { Source } from '../../../store/chat/chat.state';
             <!-- Tooltip Text -->
             <div class="tooltip-content">
               <div class="tooltip-title">{{ source.title || 'Unknown Source' }}</div>
+              <!-- Fixed: Allow URL to wrap instead of being hidden -->
               <div class="tooltip-url">{{ source.uri }}</div>
             </div>
           </div>
@@ -66,7 +66,7 @@ import { Source } from '../../../store/chat/chat.state';
       justify-content: center;
       background-color: #e3e8ee;
       color: #374151;
-      border-radius: 50%; // Circular button for the icon
+      border-radius: 50%;
       
       &:hover {
         background-color: #d1d9e2;
@@ -79,25 +79,29 @@ import { Source } from '../../../store/chat/chat.state';
       height: 14px;
     }
 
+    .rotate-135 {
+      transform: rotate(135deg);
+    }
+
     // --- Rich Tooltip Styles ---
     .rich-tooltip {
-      position: fixed; // FIXED: Breaks out of overflow:hidden containers
-      z-index: 10000;  // Ensure it sits on top of everything
+      position: fixed;
+      z-index: 10000;
       
       background-color: #1f2937;
       color: white;
       padding: 8px 12px;
       border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
       
       display: flex;
       align-items: flex-start;
       gap: 10px;
       min-width: 200px;
-      max-width: 300px;
+      max-width: 300px; /* Constrain width so it doesn't span entire screen */
       pointer-events: none;
 
-      // Base Arrow (hidden by default, shown by specific class)
+      // Base Arrow
       &::after {
         content: '';
         position: absolute;
@@ -134,27 +138,32 @@ import { Source } from '../../../store/chat/chat.state';
       flex-direction: column;
       gap: 2px;
       overflow: hidden;
+      width: 100%; /* Ensure content takes full width */
     }
 
     .tooltip-title {
       font-size: 0.75rem;
       font-weight: 600;
       line-height: 1.2;
+      word-break: break-word; /* Wrap title if needed */
     }
 
     .tooltip-url {
       font-size: 0.65rem;
       color: #9ca3af;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+      
+      /* --- FIXED: Text Wrapping Styles --- */
+      white-space: normal;       /* Allow wrapping */
+      word-break: break-all;     /* Break long URLs at any character */
+      overflow-wrap: anywhere;   /* Modern wrapping standard */
+      line-height: 1.2;
     }
 
     .animate-fade-in {
-      animation: fadeIn 0.2s ease-out;
+      animation: fadeIn 0.15s ease-out;
     }
 
+    /* FIXED: Removed transform from animation to prevent conflict with ngStyle positioning */
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -170,6 +179,7 @@ import { Source } from '../../../store/chat/chat.state';
       .rich-tooltip {
         background-color: #000;
         border: 1px solid #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       }
       .tooltip-above::after { border-color: #000 transparent transparent transparent; }
       .tooltip-below::after { border-color: transparent transparent #000 transparent; }
@@ -195,7 +205,6 @@ export class CitationButtonComponent {
     this.isHovered = false;
   }
 
-  // Update position on scroll too, in case user scrolls while hovering
   @HostListener('window:scroll')
   onScroll() {
     if (this.isHovered) {
@@ -205,13 +214,13 @@ export class CitationButtonComponent {
 
   private updatePosition() {
     const rect = this.elementRef.nativeElement.getBoundingClientRect();
-    const tooltipHeight = 80; // Estimated height including arrow
     const gap = 8;
+    const viewportHeight = window.innerHeight;
     
     // Check space above
     const spaceAbove = rect.top;
     
-    // Default to 'above' unless space is tight (< 100px from top)
+    // Logic: Prefer 'above', but flip to 'below' if space is tight (< 100px)
     if (spaceAbove < 100) {
       this.placement = 'below';
       this.tooltipStyles = {
@@ -228,22 +237,21 @@ export class CitationButtonComponent {
       };
     }
 
-    // Horizontal Boundary Check (Prevent clipping on left/right edges)
+    // Horizontal Boundary Check
     const centerX = rect.left + (rect.width / 2);
     const windowWidth = window.innerWidth;
-    const halfTooltipWidth = 150; // Approx
+    const halfTooltipWidth = 150; 
 
     if (centerX < halfTooltipWidth) {
-      // Too close to left edge -> Shift right
-      this.tooltipStyles['left'] = `${rect.left}px`;
+      // Too close to left
+      this.tooltipStyles['left'] = `${Math.max(10, rect.left)}px`;
       this.tooltipStyles['transform'] = this.placement === 'above' 
         ? 'translateY(-100%)' 
         : 'none';
-      // Note: Arrow might be slightly off-center in this edge case, which is acceptable
     } else if (centerX > windowWidth - halfTooltipWidth) {
-      // Too close to right edge -> Shift left
+      // Too close to right
       this.tooltipStyles['left'] = 'auto';
-      this.tooltipStyles['right'] = `${windowWidth - rect.right}px`;
+      this.tooltipStyles['right'] = `${Math.max(10, windowWidth - rect.right)}px`;
       this.tooltipStyles['transform'] = this.placement === 'above' 
         ? 'translateY(-100%)' 
         : 'none';
