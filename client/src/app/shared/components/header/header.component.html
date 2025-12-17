@@ -16,7 +16,7 @@
   </div>
   @if(!isMobileView){
   <button matButton [matMenuTriggerFor]="menu">
-    {{ (currentChat$ | async).title}}
+    {{ (currentChat$ | async)?.title}}
     <mat-icon>keyboard_arrow_down</mat-icon>
   </button>
   <mat-menu #menu="matMenu">
