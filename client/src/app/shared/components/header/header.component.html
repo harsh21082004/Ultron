@@ -14,6 +14,26 @@
     <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
     <span class="text-xl">Ultron</span>
   </div>
+  @if(!isMobileView){
+  <button matButton [matMenuTriggerFor]="menu">
+    {{ (currentChat$ | async).title}}
+    <mat-icon>keyboard_arrow_down</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item>
+      <mat-icon>share</mat-icon>
+      <span>Share Conversation</span>
+    </button>
+    <button mat-menu-item>
+      <mat-icon>edit</mat-icon>
+      <span>Edit</span>
+    </button>
+    <button mat-menu-item>
+      <mat-icon>delete</mat-icon>
+      <span>Delete</span>
+    </button>
+  </mat-menu>
+  }
   <div class="flex items-center gap-1 right">
     <button matIconButton aria-label="icon button with a vertical three dot icon" class="dark-button"
       (click)="themeService.toggleTheme()">
@@ -41,8 +61,10 @@
               <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
             </div>
             <div class="flex gap-1 ">
-              <button matButton [disableRipple]="true" class="!rounded-l-[15] !rounded-r-[0] w-25 h-15 !bg-[#0000002b]">Settings</button>
-              <button matButton disableRipple class="!rounded-r-[15] !rounded-l-[0] w-25 h-15 !bg-[#0000002b]" (click)="handleLogout()">Logout</button>
+              <button matButton [disableRipple]="true"
+                class="!rounded-l-[15] !rounded-r-[0] w-25 h-15 !bg-[#0000002b]">Settings</button>
+              <button matButton disableRipple class="!rounded-r-[15] !rounded-l-[0] w-25 h-15 !bg-[#0000002b]"
+                (click)="handleLogout()">Logout</button>
             </div>
           </div>
         </div>

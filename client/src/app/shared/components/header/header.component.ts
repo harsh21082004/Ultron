@@ -16,6 +16,7 @@ import { PinkButtonComponent } from "../pink-button/pink-button.component";
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { DrawerService } from '../../../core/services/drawer.service';
 import * as AuthActions from '../../../store/auth/auth.actions';
+import { selectCurrentChat } from '../../../store/chat/chat.selectors';
 
 
 @Component({
@@ -41,7 +42,8 @@ export class HeaderComponent {
   isMobileView = false;
 
   user$: Observable<User | null>;
-  loading$: Observable<Boolean>;
+  loading$: Observable<boolean>;
+  currentChat$: Observable<any | null>;
 
   private loadingService = inject(LoadingService);
   isLoading = this.loadingService.isLoading;
@@ -68,6 +70,7 @@ export class HeaderComponent {
   constructor(public themeService: ThemeService, private store: Store<AppState>, private drawer: DrawerService) {
     this.user$ = this.store.select(state => state.auth.user);
     this.loading$ = this.store.select(state => state.auth.loading);
+    this.currentChat$ = this.store.select(selectCurrentChat);
     this.isMobileView = window.innerWidth <= 840;
   }
   // A computed signal to easily check if the current mode is dark

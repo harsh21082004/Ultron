@@ -28,7 +28,7 @@ class ChatService:
     1. Status Updates (__STATUS__)
     2. Reasoning Steps (__THOUGHT__)
     3. Tool Execution (Search -> __SOURCES__)
-    4. Final Response Streaming
+    4. Final Response Streaming (__ANSWER__)
     """
 
     def __init__(self, settings: Settings):
@@ -57,7 +57,6 @@ class ChatService:
             "Use clear headings for your reasoning steps."
         )
 
-        # UPDATED: Changed citation instruction to use numeric format [1], [2]
         self.system_prompt_search = (
             "You are Ultron, connected to the live internet. "
             "Use the provided search results to answer the user's question accurately. "
@@ -131,24 +130,19 @@ class ChatService:
             yield "__STATUS__:Analyzing Request..."
             
             # A. Intent Classification
-            # Get structured intent with dynamic status from LLM
             classification = await self.intent_service.classify_intent(message)
             intent = classification["intent"]
             dynamic_status = classification["status"]
 
-            # Emit the LLM-generated status
             yield f"__STATUS__:{dynamic_status}"
             yield f"__THOUGHT__: Intent identified as '{intent.upper()}'. Routing to appropriate agent."
 
-            # B. RAG Retrieval (Parallel-ish logic)
+            # B. RAG Retrieval
             rag_context = ""
             try:
                 rag_context = await self.vector_store.retrieve_context(message)
-                if rag_context:
-                    pass
-                    # yield "__THOUGHT__: Retrieved relevant long-term memory context."
             except Exception:
-                pass # Fail silently on RAG
+                pass 
 
             rag_instruction = ""
             if rag_context:
@@ -168,11 +162,8 @@ class ChatService:
                 if sources:
                     yield f"__THOUGHT__: Found {len(sources)} relevant sources."
                     # Emit Sources for Frontend UI
-                    # NOTE: 'sources' now contains uri, icon, and citationIndices
                     yield f"__SOURCES__:{json.dumps(sources)}"
 
-                    # --- FIX: Number the snippets so LLM can cite [1], [2] ---
-                    # The ToolsService joins snippets with "\n\n". We split and number them.
                     snippets = search_summary.split("\n\n")
                     numbered_results = []
                     for i, snippet in enumerate(snippets):
@@ -187,7 +178,6 @@ class ChatService:
                 selected_model = self.llm_factory.get_tooling_model()
                 system_prompt = self.system_prompt_search + rag_instruction
                 
-                # Inject search results into the prompt
                 input_payload = f"User Question: {message}\n\n[Live Search Results]:\n{formatted_search_context}\n\nAnswer:"
 
             elif intent == 'reasoning':
@@ -227,6 +217,11 @@ class ChatService:
         )
 
         config = {"configurable": {"session_id": session_id}}
+
+        # --- CRITICAL FIX: Explicitly signal the start of the answer ---
+        # This prevents the answer from getting merged into the previous __THOUGHT__ block
+        # on buffered networks (like EC2/Nginx/Caddy).
+        yield "__ANSWER__:" 
 
         try:
             async for chunk in chain.astream({"input": input_payload}, config=config):

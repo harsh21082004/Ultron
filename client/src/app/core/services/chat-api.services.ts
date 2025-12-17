@@ -2,21 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ChatMessage } from '../../store/chat/chat.state';
-// import { environment } from '../../../environments/environment';
-// import { envType } from '../../shared/models/environment';
 
-// --- LOCAL ENVIRONMENT FIX ---
-// Detects if running on localhost to switch between direct backend access vs Nginx proxy
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 const environment = {
-  // If local, use direct FastAPI port (8000). If prod, use Nginx proxy path.
   fastApiUrl: isLocal ? 'http://localhost:8000/api/py' : '/api/py', 
   apiUrl: '/api'
 };
-
-// Mock type for the local environment definition
-type envType = typeof environment;
 
 export interface StreamEvent {
   type: 'text' | 'status' | 'log' | 'sources';
@@ -46,10 +38,6 @@ export class ChatApiService {
     };
   }
 
-  /**
-   * Connects to the backend stream and parses custom tags (__STATUS__, __THOUGHT__)
-   * into structured StreamEvents. Handles mixed chunks (Text + Tag).
-   */
   sendMessageStream(message: string, chatId: string, image?: string): Observable<StreamEvent> {
     return new Observable(subscriber => {
       const controller = new AbortController();
@@ -74,8 +62,6 @@ export class ChatApiService {
         }
 
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-
-        // State to track the active tag across chunks
         let currentTag: string | null = null;
 
         while (true) {
@@ -86,40 +72,33 @@ export class ChatApiService {
           }
 
           // --- ROBUST PARSING LOGIC ---
-          // Use lookahead regex to split string at the start of any new tag
-          // This keeps the tag with its content in the same part
-          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__):)/).filter(Boolean);
+          // Updated Regex: Now includes __ANSWER__
+          // Splits string BEFORE any of these tags, keeping the tag at the start of the split part.
+          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__):)/).filter(Boolean);
 
           for (const part of parts) {
             let processedPart = part;
-            let newTagFound = false;
             
-            // Check if this part starts with a known tag
+            // Check for tags
             if (part.startsWith('__STATUS__:')) {
               currentTag = 'status';
               processedPart = part.replace('__STATUS__:', '');
-              newTagFound = true;
             } else if (part.startsWith('__THOUGHT__:')) {
               currentTag = 'log';
               processedPart = part.replace('__THOUGHT__:', '');
-              newTagFound = true;
             } else if (part.startsWith('__SOURCES__:')) {
-              currentTag = 'sources'; // Separate type for sources so UI can parse JSON and render cards
+              currentTag = 'sources';
               processedPart = part.replace('__SOURCES__:', '');
-              newTagFound = true;
-            } 
-
-            // FIX: If we are in a special tag mode (status/log/sources), but the current part 
-            // does NOT start with a new tag, it implies the stream has transitioned 
-            // back to the standard text response (which often comes without a tag).
-            // We force a reset to text mode here to prevent "swallowing" the answer into the logs.
-            if (!newTagFound && currentTag !== null) {
-               currentTag = null;
+            } else if (part.startsWith('__ANSWER__:')) {
+              // Explicit Answer tag -> Switch to text mode
+              currentTag = 'text'; 
+              processedPart = part.replace('__ANSWER__:', '');
             }
 
-            // Logic: If currentTag is set, this text belongs to that tag (e.g. status or thought).
-            // If NO tag is set (or we just switched context implied by stream structure), it's the AI response.
-            
+            // Note: If a part DOES NOT start with a tag, we keep the `currentTag` as is.
+            // This supports multi-chunk thoughts or multi-chunk answers.
+            // But since we now have __ANSWER__, the transition from Thought -> Answer is guaranteed to be caught.
+
             const cleanValue = processedPart; 
 
             if (cleanValue) {
@@ -130,7 +109,7 @@ export class ChatApiService {
                 } else if (currentTag === 'sources') {
                     subscriber.next({ type: 'sources', value: cleanValue.trim() });
                 } else {
-                    // No tag active -> It's the AI response
+                    // Default to text if tag is 'text' or null (for backward compatibility)
                     subscriber.next({ type: 'text', value: cleanValue });
                 }
             }
