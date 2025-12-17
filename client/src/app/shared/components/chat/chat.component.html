@@ -81,7 +81,7 @@
 
             <!-- Content Renderer -->
             @for (block of message.content; track $index) {
-            <app-content-renderer-component [content]="block.value" [sender]="message.sender" class="text-base block">
+            <app-content-renderer-component [content]="block.value" [sender]="message.sender" class="text-base block" [sources]="message.sources">
             </app-content-renderer-component>
             }
 

@@ -19,23 +19,18 @@
       } @else {
         
         <div class="prose" [class.dark-prose]="isDarkMode()">
-            <app-streaming-text [content]="$any(block.content)"></app-streaming-text>
+            <!-- UPDATED: Pass sources to streaming text -->
+            <app-streaming-text 
+                [content]="$any(block.content)"
+                [sources]="sources || []">
+            </app-streaming-text>
         </div>
 
       }
     </ng-container>
 
-    <!-- IMAGE BLOCK (NEW) -->
+    <!-- IMAGE BLOCK -->
     <ng-container *ngSwitchCase="'image_url'">
-        <div class="my-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-w-sm">
-            <img [src]="$any(block.content)" 
-                 alt="Uploaded Image" 
-                 class="w-full h-auto object-cover max-h-64"
-                 loading="lazy">
-        </div>
-    </ng-container>
-    <!-- Handle legacy 'image' type if any -->
-    <ng-container *ngSwitchCase="'image'">
         <div class="my-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm max-w-sm">
             <img [src]="$any(block.content)" 
                  alt="Uploaded Image" 
@@ -52,8 +47,6 @@
     <!-- CODE BLOCK -->
     <ng-container *ngSwitchCase="'code'">
       <div class="code-wrapper my-4 rounded-xl overflow-hidden ">
-        
-        <!-- Code Header -->
         <div class="flex justify-between items-center px-4 py-3 code-header">
           <span class="text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
             {{ $any(block.content).language || 'Code' }}
@@ -64,8 +57,6 @@
             <span>Copy</span> 
           </button>
         </div>
-
-        <!-- Code Body -->
         <div class="relative overflow-x-auto mt-0.5">
           <pre class="m-0 p-4"><code 
             [appHighlight]="$any(block.content).code" 

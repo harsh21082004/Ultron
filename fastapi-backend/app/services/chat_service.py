@@ -57,11 +57,13 @@ class ChatService:
             "Use clear headings for your reasoning steps."
         )
 
+        # UPDATED: Changed citation instruction to use numeric format [1], [2]
         self.system_prompt_search = (
             "You are Ultron, connected to the live internet. "
             "Use the provided search results to answer the user's question accurately. "
             "Synthesize the information. If results are conflicting, mention that. "
-            "Always cite your sources implicitly by referencing the site names in Markdown links."
+            "Cite your sources using the format [1], [2], etc. corresponding to the numbered search results provided. "
+            "Do not use Markdown links for citations."
         )
         
         self.system_prompt_vision = (
@@ -160,19 +162,33 @@ class ChatService:
                 search_data = self.tools_service.perform_search(message)
                 search_summary = search_data["summary"]
                 sources = search_data["sources"]
+                
+                formatted_search_context = ""
 
                 if sources:
                     yield f"__THOUGHT__: Found {len(sources)} relevant sources."
                     # Emit Sources for Frontend UI
+                    # NOTE: 'sources' now contains uri, icon, and citationIndices
                     yield f"__SOURCES__:{json.dumps(sources)}"
+
+                    # --- FIX: Number the snippets so LLM can cite [1], [2] ---
+                    # The ToolsService joins snippets with "\n\n". We split and number them.
+                    snippets = search_summary.split("\n\n")
+                    numbered_results = []
+                    for i, snippet in enumerate(snippets):
+                        numbered_results.append(f"[{i+1}] {snippet}")
+                    
+                    formatted_search_context = "\n\n".join(numbered_results)
+
                 else:
                     yield "__THOUGHT__: No direct external sources found."
+                    formatted_search_context = "No results found."
                 
                 selected_model = self.llm_factory.get_tooling_model()
                 system_prompt = self.system_prompt_search + rag_instruction
                 
                 # Inject search results into the prompt
-                input_payload = f"User Question: {message}\n\n[Live Search Results]:\n{search_summary}\n\nAnswer:"
+                input_payload = f"User Question: {message}\n\n[Live Search Results]:\n{formatted_search_context}\n\nAnswer:"
 
             elif intent == 'reasoning':
                 yield f"__THOUGHT__: Activating Chain-of-Thought processing for complex query."
@@ -215,10 +231,6 @@ class ChatService:
         try:
             async for chunk in chain.astream({"input": input_payload}, config=config):
                 if chunk.content:
-                    data_to_save = chunk.content
-                    with open("output.txt", "a", encoding="utf-8") as file:
-                        file.write(data_to_save)
-                    print(chunk.content)
                     yield chunk.content
         except Exception as e:
             print(f"Streaming Error: {e}")

@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from langchain_core.tools import Tool
 from langchain_google_community import GoogleSearchAPIWrapper
+from urllib.parse import urlparse
 import json
 
 from ..core.config import get_settings
@@ -8,7 +9,7 @@ from ..core.config import get_settings
 class ToolsService:
     """
     Manages Google Web Search Tool.
-    Returns structured data including sources.
+    Returns structured data including sources with uri, icon, and citationIndices.
     """
 
     def __init__(self):
@@ -55,7 +56,7 @@ class ToolsService:
         Performs a search and returns structured data:
         {
             "summary": "Combined snippets...",
-            "sources": [{"title": "...", "link": "..."}]
+            "sources": [{"title": "...", "uri": "...", "icon": "...", "citationIndices": []}]
         }
         """
         if not self._search_available:
@@ -76,7 +77,22 @@ class ToolsService:
                 link = res.get("link", "#")
                 snippet = res.get("snippet", "")
                 
-                sources.append({"title": title, "link": link})
+                # --- MANAGE THE REQUESTED FIELDS ---
+                
+                # 1. Generate Icon URL from domain
+                try:
+                    domain = urlparse(link).netloc
+                    icon_url = f"https://www.google.com/s2/favicons?domain={domain}"
+                except:
+                    icon_url = ""
+
+                sources.append({
+                    "title": title,
+                    "uri": link,         # Renamed 'link' to 'uri'
+                    "icon": icon_url,    # Added icon
+                    "citationIndices": [] # Added default empty list
+                })
+
                 snippets.append(f"Source: {title}\nContent: {snippet}")
 
             summary = "\n\n".join(snippets)

@@ -1,84 +1,63 @@
-// /* =========================================
-//    TIWARI JI: GEMINI "TIGHT" STYLE
-//    ========================================= */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-// :host {
-//   display: block;
-//   font-family: 'Google Sans', 'Inter', -apple-system, sans-serif;
-//   font-size: 16px;
-//   line-height: 0.5; /* Tighter line height like Gemini */
-//   color: #e3e3e3;   /* Light text */
-// }
+.fade-in-block {
+    animation: fadeIn 0.3s ease-out forwards;
+}
 
-// /* --- 1. TIGHTER HEADERS --- */
-// h1, h2, h3 {
-//   color: #ffffff;
-//   font-weight: 500;
-//   margin-top: 1.5rem;    /* Reduced from 2rem */
-//   margin-bottom: 0.5rem; /* Reduced from 0.75rem */
-//   line-height: 0.5;
-// }
-// h1 { font-size: 1.6rem; }
-// h2 { font-size: 1.3rem; }
-// h3 { font-size: 1.1rem; color: #a8c7fa; }
+.fade-in-text {
+    animation: fadeIn 0.1s ease-out forwards;
+}
 
-// /* --- 2. TIGHTER PARAGRAPHS --- */
-// p {
-//   margin-bottom: 0.75rem; /* Standard Gemini spacing */
-//   margin-top: 0;
-// }
+// --- CITATION CHIP STYLING ---
+// Resembles the small, rounded buttons seen in modern AI interfaces
+.citation-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    
+    margin: 0 2px;
+    padding: 0px 6px;
+    height: 18px;
+    border-radius: 9px; // Pill shape
+    
+    background-color: #e3e8ee; // Light grey-blue
+    color: #4b5563; // Dark grey text
+    
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    line-height: 1;
+    
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
 
-// /* --- 3. LISTS (The main source of gaps) --- */
-// ul, ol {
-//   margin-top: 0.5rem;
-//   margin-bottom: 0.5rem;
-//   padding-left: 1.5rem;
-// }
+    user-select: none;
+    
+    &:hover {
+        background-color: #d1d9e2;
+        color: #1f2937;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    // Dark mode support (if parent has dark class or system preference)
+    @media (prefers-color-scheme: dark) {
+        background-color: #374151;
+        color: #e5e7eb;
+        
+        &:hover {
+            background-color: #4b5563;
+            color: #ffffff;
+        }
+    }
+}
 
-// li {
-//   margin-bottom: 0.25rem; /* Very tight list items */
-//   padding-left: 0.25rem;
-// }
-
-// li > p {
-//   display: inline; /* CRITICAL: Forces p inside li to behave like text, removing the newline gap */
-//   margin: 0;
-// }
-
-// /* --- 4. CODE BLOCKS --- */
-// pre {
-//   background: #1e1e1e;
-//   padding: 12px;
-// }
-
-// code {
-//   font-family: 'Roboto Mono', monospace;
-//   background: rgba(255,255,255,0.1);
-//   padding: 2px 5px;
-//   border-radius: 4px;
-//   font-size: 0.9em;
-// }
-
-// /* --- 5. THE ANIMATION FIX --- */
-
-// /* For BLOCKS (paragraphs, lists, headers) -> Slide Up is okay */
-// .fade-in-block {
-//   animation: slideUp 0.4s ease-out forwards;
-// }
-
-// /* For INLINE TEXT (chunks inside a sentence) -> OPACITY ONLY */
-// /* display: inline prevents the "Gap" / "Space" issue */
-// .fade-in-text {
-//   animation: plainFade 0.3s ease-out forwards;
-//   display: inline; 
-// }
-
-// @keyframes slideUp {
-//   from { opacity: 0; transform: translateY(5px); }
-//   to { opacity: 1; transform: translateY(0); }
-// }
-
-// @keyframes plainFade {
-//   from { opacity: 0; }
-//   to { opacity: 1; }
-// }
+// Ensure normal text flow around it
+p {
+    line-height: 1.6;
+}
