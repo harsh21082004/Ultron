@@ -43,3 +43,11 @@ export const selectCurrentChatId = createSelector(
   selectChatState,
   (state) => state.currentChatId
 )
+
+export const selectCurrentChat = createSelector(
+  selectAllChats,
+  selectCurrentChatId,
+  (chats, currentChatId) => {
+    return chats.find(chat => chat._id === currentChatId);
+  }
+)

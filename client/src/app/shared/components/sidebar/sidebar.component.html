@@ -24,7 +24,7 @@
       <mat-list class="nav-list">
         @for (chat of chats; track chat._id) {
         <mat-list-item class="nav-list-item">
-          <a matButton [routerLink]="['/chat', chat._id]" class="chat-title">{{ chat.title }}</a>
+          <a matButton [routerLink]="['/chat', chat._id]" [class.active-dark]="((currentChatId$ | async) === chat._id) && isDarkMode" [class.active]="((currentChatId$ | async) === chat._id) && !isDarkMode" class="chat-title">{{ chat.title }}</a>
         </mat-list-item> 
         }
       </mat-list>

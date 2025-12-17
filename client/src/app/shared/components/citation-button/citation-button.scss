@@ -1,0 +1,143 @@
+:host {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.citation-container {
+    position: relative;
+    display: inline-flex;
+}
+
+.action-btn {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    color: #374151;
+    border-radius: 50%;
+
+    &:hover {
+        background-color: #d1d9e2;
+    }
+}
+
+.small-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+// --- Rich Tooltip Styles ---
+.rich-tooltip {
+    position: fixed;
+    z-index: 10000;
+
+    background-color: #1f2937;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 200px;
+    max-width: 300px; /* Constrain width so it doesn't span entire screen */
+    pointer-events: none;
+
+    // Base Arrow
+    &::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+    }
+}
+
+// Arrow pointing DOWN (Tooltip is ABOVE)
+.tooltip-above::after {
+    top: 100%;
+    border-color: #1f2937 transparent transparent transparent;
+}
+
+// Arrow pointing UP (Tooltip is BELOW)
+.tooltip-below::after {
+    bottom: 100%;
+    border-color: transparent transparent #1f2937 transparent;
+}
+
+.tooltip-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    background: white;
+}
+
+.tooltip-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    width: 100%; /* Ensure content takes full width */
+}
+
+.tooltip-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    word-break: break-word; /* Wrap title if needed */
+}
+
+.tooltip-url {
+    font-size: 0.65rem;
+    color: #9ca3af;
+
+    /* --- FIXED: Text Wrapping Styles --- */
+    white-space: normal; /* Allow wrapping */
+    word-break: break-all; /* Break long URLs at any character */
+    overflow-wrap: anywhere; /* Modern wrapping standard */
+    line-height: 1.2;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.15s ease-out;
+}
+
+/* FIXED: Removed transform from animation to prevent conflict with ngStyle positioning */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+// Dark Theme Override
+:host-context(.dark-theme) {
+    .action-btn {
+        background-color: #374151;
+        color: #e5e7eb;
+        &:hover {
+            background-color: #4b5563;
+        }
+    }
+    .rich-tooltip {
+        background-color: #000;
+        border: 1px solid #333;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    .tooltip-above::after {
+        border-color: #000 transparent transparent transparent;
+    }
+    .tooltip-below::after {
+        border-color: transparent transparent #000 transparent;
+    }
+}

@@ -124,6 +124,14 @@
   text-overflow: ellipsis !important;
 }
 
+.active{
+  background-color: #ba9b6c54;
+}
+
+.active-dark{
+  background-color: #627aa033;
+}
+
 
 /* ----- Mobile off-canvas drawer (<= 639px) ----- */
 @media (max-width: 840px) {

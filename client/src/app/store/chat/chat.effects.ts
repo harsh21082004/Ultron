@@ -5,7 +5,7 @@ import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTi
 import { Store } from '@ngrx/store';
 import * as ChatActions from './chat.actions';
 import { AppState } from '..';
-import { selectChatMessages } from './chat.selectors';
+import { selectChatMessages, selectCurrentChat } from './chat.selectors';
 import { selectAuthUser } from '../auth/auth.selectors';
 import { ChatDbService } from '../../core/services/chat-db.service';
 import { AudioApiService } from '../../core/services/audio-api.service';
@@ -102,14 +102,34 @@ export class ChatEffects {
   saveOnStreamComplete$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatActions.streamComplete),
-      withLatestFrom(this.store.select(selectChatMessages)),
-      switchMap(([action, messages]) => {
+      withLatestFrom(
+        this.store.select(selectChatMessages),
+        this.store.select(selectCurrentChat)
+      ),
+      switchMap(([action, messages, currentChat]) => {
         const chatId = action.chatId;
 
         if (!chatId || messages.length < 2) {
           return of(ChatActions.saveChatHistoryFailure({ error: 'Missing data to save chat.' }));
         }
 
+        // --- NEW LOGIC: Prevent Title Regeneration ---
+        // Only generate title if:
+        // 1. It is the very first exchange (2 messages: 1 User, 1 AI)
+        // 2. AND the current title is "New Chat" (or missing)
+        const isFirstExchange = messages.length === 2;
+        const hasCustomTitle = currentChat?.title && currentChat.title !== 'New Chat';
+        
+        // If it's a long conversation or already has a custom title, SKIP generation.
+        if (!isFirstExchange || hasCustomTitle) {
+           const existingTitle = currentChat?.title || 'New Chat';
+           return this.chatDbService.saveChat(chatId, messages, existingTitle).pipe(
+              map(() => ChatActions.saveChatHistorySuccess({ chatId, newTitle: existingTitle })),
+              catchError(error => of(ChatActions.saveChatHistoryFailure({ error: error.message })))
+           );
+        }
+
+        // Otherwise, generate the title (First run)
         return this.chatApiService.generateTitle(messages).pipe(
           switchMap(titleResponse => {
             const aiTitle = titleResponse.title || 'New Chat';

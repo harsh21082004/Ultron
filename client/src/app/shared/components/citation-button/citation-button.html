@@ -1,1 +1,35 @@
-<p>citation-button works!</p>
+@if (source) {
+      <div class="citation-container" 
+           (mouseenter)="onMouseEnter()" 
+           (mouseleave)="onMouseLeave()">
+        
+        <button mat-icon-button 
+                class="action-btn dark:!bg-[#627aa033] dark:!text-gray-400 !bg-[#ba9b6c54]"
+                aria-label="View Source" 
+                (click)="openSource()">
+          <mat-icon class="rotate-135 small-icon">link</mat-icon>
+        </button>
+
+        <!-- Custom Rich Tooltip -->
+        @if (isHovered) {
+          <div class="rich-tooltip animate-fade-in" 
+               [ngStyle]="tooltipStyles"
+               [class.tooltip-above]="placement === 'above'"
+               [class.tooltip-below]="placement === 'below'">
+            
+            <!-- Tooltip Icon -->
+            <img [src]="source.icon || 'assets/icons/web_asset.svg'" 
+                 class="tooltip-icon" 
+                 onerror="this.src='assets/icons/web_asset.svg'"
+                 alt="">
+            
+            <!-- Tooltip Text -->
+            <div class="tooltip-content">
+              <div class="tooltip-title">{{ source.title || 'Unknown Source' }}</div>
+              <!-- Fixed: Allow URL to wrap instead of being hidden -->
+              <div class="tooltip-url">{{ source.uri }}</div>
+            </div>
+          </div>
+        }
+      </div>
+    }

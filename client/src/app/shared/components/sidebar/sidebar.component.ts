@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, computed, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router, NavigationStart } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -14,10 +14,11 @@ import { MatBottomSheet, MatBottomSheetConfig, MatBottomSheetModule } from '@ang
 import { SearchChat } from '../search-chat/search-chat.component';
 import { MatMenuModule } from '@angular/material/menu';
 import * as ChatActions from '../../../store/chat/chat.actions';
-import { selectAllChats } from '../../../store/chat/chat.selectors';
+import { selectAllChats, selectCurrentChatId } from '../../../store/chat/chat.selectors';
 import { DrawerService } from '../../../core/services/drawer.service';
 import { SettingsDialogComponent } from '../settings/settings.component';
 import { MatDialog } from '@angular/material/dialog';
+import { ThemeService } from '../../../core/services/theme.services';
 
 @Component({
   selector: 'app-sidebar-component',
@@ -32,6 +33,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
   chats$: Observable<any[]>;
   isAnimatingOut = false;
   private destroy$ = new Subject<void>();
+  currentChatId$: Observable<string | null | undefined>;
+  private themeService = inject(ThemeService);
 
   isDrawerOpen = false;
   drawerOpenUsingMenu = false;
@@ -48,6 +51,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
   ) {
     this.user$ = this.store.select(selectAuthUser);
     this.chats$ = this.store.select(selectAllChats);
+    this.currentChatId$ = this.store.select(selectCurrentChatId);
+    console.log(this.router.url)
     this.isMobileView = window.innerWidth <= 840;
   }
 
@@ -202,4 +207,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
   logout(): void {
     this.store.dispatch(AuthActions.logout());
   }
+
+  isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
 }
