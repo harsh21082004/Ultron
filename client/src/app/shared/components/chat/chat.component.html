@@ -47,7 +47,7 @@
                       'Thinking...' }}</span>
                   </div>
                   }
-                  <img src="assets/images/logo.svg" class="w-6 h-6 absolute top-2 left-2" alt="loading">
+                  <img src="assets/images/logo.svg" class="w-6 h-6 absolute top-2 left-2" alt="loading"> 
                 </div>
               </span>
               @if(!message.isStreaming){
@@ -81,7 +81,8 @@
 
             <!-- Content Renderer -->
             @for (block of message.content; track $index) {
-            <app-content-renderer-component [content]="block.value" [sender]="message.sender" class="text-base block" [sources]="message.sources">
+            <app-content-renderer-component [content]="block.value" [sender]="message.sender" class="text-base block"
+              [sources]="message.sources">
             </app-content-renderer-component>
             }
 
@@ -149,6 +150,7 @@
     </div>
   </div>
 
+  @if(!isSharedChatView){
   <!-- INPUT AREA + EMPTY STATE CONTAINER -->
   <div class="w-full flex flex-col items-center transition-all duration-700 ease-in-out" [ngClass]="(messages.length === 0 && !(isLoading$ | async)) 
           ? 'mb-[15vh] sm:mb-[20vh] absolute bottom-0 left-0 right-0 z-10' 
@@ -204,6 +206,7 @@
       }
     </div>
   </div>
+  }
 
 </div>
 }

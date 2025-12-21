@@ -1,0 +1,36 @@
+<h2 mat-dialog-title class="!flex justify-between items-center title !pt-4">
+    <span>Share Conversation</span>
+    <button matIconButton mat-dialog-close aria-label="Close">
+        <mat-icon>close</mat-icon>
+    </button>
+</h2>
+<mat-dialog-content class="!px-0">
+    <div class="top">
+        <p>Your conversation has been shared successfully! You can use the link below to access it:</p>
+        <div appearance="fill" class="w-full p-0 matForm" matFormFieldControl="">
+            <div class="input-field">
+                <input matInput readonly class="input" [value]="(shareableLink$ | async) || ''" #linkInput>
+                <button mat-fab aria-label="Copy link" class="copy-btn" (click)="copyLink(linkInput.value)"
+                    [disabled]="!linkInput.value" matTooltip="Copy to Clipboard" matSuffix>
+                    @if(isSharing$ | async){
+                    <app-loading-spinner [diameter]="25"></app-loading-spinner>
+                    }@else{
+                    <div class="flex items-center gap-1">
+                        <mat-icon class="copy-icon !text-sm">content_copy</mat-icon>
+                        <span class="copy-text text-sm">{{ (isCopied) ? 'Copied' : 'Copy Link' }}</span>
+                    </div>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="down mt-5">
+        <h2 class="text-lg">Share via</h2>
+        <div class="share-options flex gap-4 justify-center items-center mt-3">
+            <img src="assets/images/facebook.svg" alt="facebook">
+            <img src="assets/images/linkedin.svg" alt="linkedin">
+            <img src="assets/images/x.svg" alt="x">
+        </div>
+    </div>
+</mat-dialog-content>

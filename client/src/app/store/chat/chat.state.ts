@@ -37,13 +37,17 @@ export interface StreamStatus {
 
 export interface ChatState {
   chatId: string | null;
+  title?: string | null;
   // Using currentChatId in reducer, mapping to chatId here for consistency
   currentChatId?: string | null; 
-  messages: ChatMessage[];
+  shareUrl?: string | null;
+  shareId?: string | null;
+  messages: ChatMessage[]; 
   isLoading: boolean;
   isStreaming: boolean;
   streamStatus: StreamStatus | null;
   error: string | null;
+  isSharing?: boolean;
 
   // Sidebar / Management State
   // FIXED: Removed '?' to ensure it is always typed as an array (even if empty)
@@ -58,10 +62,12 @@ export interface ChatState {
   lastVisionResult?: string;
   isTranslating?: boolean;
   lastTranslation?: string;
+
 }
 
 export const initialChatState: ChatState = {
   chatId: null,
+  title: null,
   currentChatId: null,
   messages: [],
   isLoading: false,
@@ -73,5 +79,8 @@ export const initialChatState: ChatState = {
   searchResults: [],
   isTranscribing: false,
   isAnalyzingImage: false,
-  isTranslating: false
+  isTranslating: false,
+  shareId: null,
+  shareUrl: null,
+  isSharing: false
 };

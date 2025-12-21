@@ -40,6 +40,13 @@
     code {
         background-color: #132a39 !important;
     }
+
+    a {
+    color: #60a5fa;
+    &:hover {
+      color: #93c5fd;
+    }
+  }
 }
 
 code::-webkit-scrollbar {
@@ -58,56 +65,93 @@ code::-webkit-scrollbar {
     }
 
     /* HEADINGS */
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         margin-top: 0.5em; /* Added slight top space for separation */
         margin-bottom: 0.25em;
         font-weight: 600;
     }
-    h1 { font-size: 1.25rem; }
-    h2 { font-size: 1.15rem; }
-    h3 { font-size: 1.05rem; }
+    h1 {
+        font-size: 1.25rem;
+    }
+    h2 {
+        font-size: 1.15rem;
+    }
+    h3 {
+        font-size: 1.05rem;
+    }
 
     /* PARAGRAPHS */
     p {
-        margin-bottom: 0.5em;   /* Optimized for reading */
+        margin-bottom: 0.5em; /* Optimized for reading */
     }
     /* Remove bottom margin from the last paragraph to avoid extra bubble space */
     p:last-child {
         margin-bottom: 0;
     }
 
+    /* Links */
+    a {
+        color: #2563eb;
+        text-decoration: underline;
+        /* Ensure links break if they are too long */
+        word-break: break-all;
+
+        &:hover {
+            color: #1d4ed8;
+        }
+    }
+
     /* LISTS & NESTING FIX */
-    ul, ol {
+    ul,
+    ol {
         margin-left: 1.25em;
         margin-bottom: 0.5em;
         list-style-position: outside;
 
         /* Deep Nesting Reset: Fixes gaps when ul/ol is inside an li */
-        ul, ol {
+        ul,
+        ol {
             margin-left: 1.25em; /* Keep indentation */
-            margin-bottom: 0;    /* Remove extra bottom space */
-            margin-top: 0;       /* Connect directly to parent li text */
+            margin-bottom: 0; /* Remove extra bottom space */
+            margin-top: 0; /* Connect directly to parent li text */
         }
     }
 
     /* Marker Hierarchy */
-    ul { list-style-type: disc; }
-    ul ul { list-style-type: circle; }
-    ul ul ul { list-style-type: square; }
+    ul {
+        list-style-type: disc;
+    }
+    ul ul {
+        list-style-type: circle;
+    }
+    ul ul ul {
+        list-style-type: square;
+    }
 
-    ol { list-style-type: decimal; }
-    ol ol { list-style-type: lower-alpha; }
-    ol ol ol { list-style-type: lower-roman; }
-    
+    ol {
+        list-style-type: decimal;
+    }
+    ol ol {
+        list-style-type: lower-alpha;
+    }
+    ol ol ol {
+        list-style-type: lower-roman;
+    }
+
     li {
-        margin-bottom: 0; 
+        margin-bottom: 0;
         padding-left: 0.25em;
     }
-    
+
     li > p {
         margin-bottom: 0.25em; /* Reduce paragraph gap inside list items */
     }
-    
+
     li > p:last-child {
         margin-bottom: 0;
     }
@@ -117,7 +161,7 @@ code::-webkit-scrollbar {
         background-color: rgba(0, 0, 0, 0.05); /* Subtle bg for light mode */
         padding: 0.1em 0.3em;
         border-radius: 4px;
-        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-family: "Menlo", "Monaco", "Courier New", monospace;
         font-size: 0.85em;
     }
 
@@ -285,66 +329,66 @@ pre,
 
 /* 1. Base Typography (Prose) */
 :host ::ng-deep .prose {
-  font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
-  font-size: 16px;
-  letter-spacing: 0.01em;
-  color: #1f1f1f; /* Soft Black */
+    font-family: "Google Sans", "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    color: #1f1f1f; /* Soft Black */
 }
 
 :host ::ng-deep .dark-prose {
-  color: #e3e3e3; /* Soft White */
+    color: #e3e3e3; /* Soft White */
 }
 
 /* 2. Headings */
 :host ::ng-deep .prose h1,
 :host ::ng-deep .prose h2,
 :host ::ng-deep .prose h3 {
-  font-weight: 500; /* Not too bold */
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+    font-weight: 500; /* Not too bold */
+    margin-top: 1em;
+    margin-bottom: 0.5em;
 }
 
 :host ::ng-deep .prose strong {
-  font-weight: 600;
-  color: #000;
+    font-weight: 600;
+    color: #000;
 }
 :host ::ng-deep .dark-prose strong {
-  color: #fff;
+    color: #fff;
 }
 
 /* 3. Lists (Gemini uses specific bullet spacing) */
-:host ::ng-deep .prose ul, 
+:host ::ng-deep .prose ul,
 :host ::ng-deep .prose ol {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-  padding-left: 1.5em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding-left: 1.5em;
 }
 
 :host ::ng-deep .prose li {
-  margin-bottom: 0.25em;
-  padding-left: 0.25em;
+    margin-bottom: 0.25em;
+    padding-left: 0.25em;
 }
 
 :host ::ng-deep .prose li::marker {
-  color: #888; /* Subtle bullets */
+    color: #888; /* Subtle bullets */
 }
 
 /* 4. Inline Code (The little boxes inside text) */
 :host ::ng-deep .prose :not(pre) > code {
-  background-color: var(--mat-menu-container-color); /* Light Blue-Grey */
-  color: #1f1f1f;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.85em;
-  font-weight: 500;
+    background-color: var(--mat-menu-container-color); /* Light Blue-Grey */
+    color: #1f1f1f;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.85em;
+    font-weight: 500;
 }
 
 :host ::ng-deep .dark-prose :not(pre) > code {
-  color: #e3e3e3;
+    color: #e3e3e3;
 }
 
 .dark-header {
-  background: #2d2d2d;
-  color: #a0a0a0;
+    background: #2d2d2d;
+    color: #a0a0a0;
 }

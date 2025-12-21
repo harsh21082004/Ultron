@@ -50,4 +50,29 @@ export const selectCurrentChat = createSelector(
   (chats, currentChatId) => {
     return chats.find(chat => chat._id === currentChatId);
   }
-)
+);
+
+export const selectShareUrl = createSelector(
+  selectChatState,
+  (state) => state.shareUrl
+);
+
+export const selectShareId = createSelector(
+  selectChatState,
+  (state) => state.shareId
+);
+
+export const selectIsSharing = createSelector(
+  selectChatState,
+  (state) => state.isSharing
+);
+
+export const selectChatTitle = createSelector(
+  selectChatState,
+  (state)=> state.title
+);
+
+export const selectStreamStatus = createSelector(
+  selectChatState,
+  (state) => state.streamStatus
+);

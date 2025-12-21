@@ -342,5 +342,37 @@ export const chatReducer = createReducer(
     ...state,
     isTranslating: false,
     error,
-  }))
+  })),on(ChatActions.shareChat, (state) => ({
+    ...state,
+    isSharing: true,
+    error: null,
+  })),
+  on(ChatActions.shareChatSuccess, (state, { shareUrl, shareId }) => ({
+    ...state,
+    shareUrl: shareUrl,
+    shareId: shareId,
+    isSharing: false,
+  })),
+  on(ChatActions.shareChatFailure, (state, { error }) => ({
+    ...state,
+    error,
+    isSharing: false,
+  })),
+  on(ChatActions.loadSharedChat, (state) => ({
+    ...state,
+    isLoading: true,
+    error: null,
+  })),
+  on(ChatActions.loadSharedChatSuccess, (state, { messages, title, createdAt, shareId}) => ({
+    ...state,
+    isLoading: false,
+    messages: messages,
+    title: title,
+    shareId: shareId
+  })),
+  on(ChatActions.loadSharedChatFailure, (state, { error }) => ({
+    ...state,
+    isLoading: false,
+    error: error,
+  })),
 );

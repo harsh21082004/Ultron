@@ -14,13 +14,25 @@
     <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
     <span class="text-xl">Ultron</span>
   </div>
-  @if(!isMobileView){
-  <button matButton [matMenuTriggerFor]="menu">
-    {{ (currentChat$ | async)?.title}}
+  @if(!isMobileView && isSharedChatView){
+    <button matButton [matMenuTriggerFor]="menu">
+    {{ title$ | async}}
     <mat-icon>keyboard_arrow_down</mat-icon>
   </button>
   <mat-menu #menu="matMenu">
-    <button mat-menu-item>
+    <button mat-menu-item (click)="handleSaveConversation()">
+      <mat-icon>share</mat-icon>
+      <span>Save Conversation</span>
+    </button>
+  </mat-menu>
+  }
+  @if(!isMobileView && (currentChat$ | async); as currentChat){
+  <button matButton [matMenuTriggerFor]="menu">
+    {{ currentChat?.title}}
+    <mat-icon>keyboard_arrow_down</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item (click)="handleShare(currentChat?._id)">
       <mat-icon>share</mat-icon>
       <span>Share Conversation</span>
     </button>

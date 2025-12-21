@@ -37,6 +37,10 @@ export const routes: Routes = [
     path: 'chat/:id', 
     component: ChatComponent,
   },
+  { 
+    path: 'share/:shareId', 
+    component: ChatComponent,
+  },
 
   // --- Protected Routes ---
   // These routes are now protected by the authGuard.

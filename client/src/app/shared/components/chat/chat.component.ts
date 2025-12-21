@@ -77,6 +77,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   public isStreaming$: Observable<boolean>;
   public streamStatus$: Observable<StreamStatus | null>; 
   public user$: Observable<User | null>;
+  public isSharedChatView = false;
   
   public promptSuggestions = PROMPT_SUGGESTIONS;
   public isMobileView = false;
@@ -88,7 +89,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private store = inject(Store<AppState>);
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private router = inject(Router); 
   private clipboard = inject(ClipboardService);
   private audioService = inject(AudioApiService); 
   
@@ -124,18 +125,34 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       withLatestFrom(this.store.select(selectCurrentChatId))
     ).subscribe(([params, currentLoadedChatId]) => {
       const urlChatId = params.get('id');
+      const shareId = params.get('shareId'); 
+
+      this.store.dispatch(ChatActions.clearActiveChat());
       
       // Reset initial load flag when switching chats so it scrolls to bottom again
       this.isInitialLoad = true;
 
-      if (urlChatId) {
+      // 1. Shared Chat Route (High Priority)
+      if (shareId) {
+        // Dispatch specific action to load shared chat content
+        this.store.dispatch(ChatActions.loadSharedChat({ shareId }));
+        this.isSharedChatView = true;
+      } 
+      // 2. Normal Chat Route (Loading existing history)
+      else if (urlChatId) {
+        this.isSharedChatView = false;
+        // Only load if it's different from what's currently in memory
         if (urlChatId !== currentLoadedChatId) {
           this.store.dispatch(ChatActions.loadChatHistory({ chatId: urlChatId }));
         }
-      } else {
-        if (currentLoadedChatId !== null) {
-          this.store.dispatch(ChatActions.clearActiveChat());
-        }
+      } 
+      // 3. New Chat / Root
+      else {
+        this.isSharedChatView = false;
+        // FIX: Always clear the chat when hitting the root route. 
+        // This handles cases where we come from a Shared Chat (where currentLoadedChatId might be null or different)
+        // and ensures the view is reset to empty.
+        this.store.dispatch(ChatActions.clearActiveChat());
       }
     });
   }

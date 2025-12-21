@@ -12,6 +12,7 @@ import { AudioApiService } from '../../core/services/audio-api.service';
 import { VisionApiService } from '../../core/services/vision-api.service';
 import { TranslateApiService } from '../../core/services/translate-api.service';
 import { ChatApiService } from '../../core/services/chat-api.services';
+import { Router } from '@angular/router';
 
 @Injectable()
 export class ChatEffects {
@@ -22,6 +23,7 @@ export class ChatEffects {
   private audioApi = inject(AudioApiService);
   private visionApi = inject(VisionApiService);
   private translateApi = inject(TranslateApiService);
+  private router = inject(Router);
 
   loadHistory$ = createEffect(() => {
     return this.actions$.pipe(
@@ -236,4 +238,49 @@ export class ChatEffects {
       )
     );
   });
+
+  shareChat$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.shareChat),
+      switchMap(action => 
+        this.chatDbService.createShareLink(action.chatId).pipe(
+          tap(res => console.log("Share link created:", res)),
+          map(res => ChatActions.shareChatSuccess({ shareId: res.shareId, shareUrl: res.shareUrl })),
+          catchError(err => of(ChatActions.shareChatFailure({ error: err.message ?? 'Share link creation failed' })))
+        )
+      )
+    )
+  })
+
+  loadSharedChat$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.loadSharedChat),
+      switchMap(action => 
+        this.chatDbService.getSharedPreview(action.shareId).pipe(
+          tap(res => console.log("Shared chat preview loaded:", res)),
+          map(res => ChatActions.loadSharedChatSuccess({ title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId })),
+          catchError(err => of(ChatActions.loadSharedChatFailure({ error: err.message ?? 'Importing shared chat failed' })))
+        )
+      )
+    )
+  })
+
+  saveSharedConversation$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(ChatActions.saveSharedConversation), 
+      switchMap(action => {
+        if (!action.shareId) {
+          return of(ChatActions.saveSharedConversationFailure({ error: 'Share ID is required' }));
+        }
+        return this.chatDbService.importSharedChat(action.shareId).pipe(
+          tap(res => {
+             console.log("Shared chat imported, new chat ID:", res.chatId);
+             this.router.navigate(['/chat', res.chatId]);
+          }),
+          map(res => ChatActions.saveSharedConversationSuccess({ chatId: res.chatId })),
+          catchError(err => of(ChatActions.saveSharedConversationFailure({ error: err.message ?? 'Importing shared chat failed' })))
+        );
+      })
+    )
+  })
 }

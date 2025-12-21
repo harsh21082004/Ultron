@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { CodeEditorCanvas } from './code-editor-canvas.component';
+import { ShareDialog } from './share-dialog';
 
-describe('CodeEditorCanvas', () => {
-  let component: CodeEditorCanvas;
-  let fixture: ComponentFixture<CodeEditorCanvas>;
+describe('ShareDialog', () => {
+  let component: ShareDialog;
+  let fixture: ComponentFixture<ShareDialog>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CodeEditorCanvas]
+      imports: [ShareDialog]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(CodeEditorCanvas);
+    fixture = TestBed.createComponent(ShareDialog);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

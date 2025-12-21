@@ -51,6 +51,8 @@ html.dark {
   $dark-bg: #162731;
   $dark-text: #c4c7c5;
 
+  --primary-color: #3b82f6;
+
   // CSS Variables for Dark Mode
   --mat-menu-container-color: #{$dark-bg} !important;
   --mat-sys-on-surface: #{$dark-text};
@@ -70,6 +72,8 @@ html.dark {
 html {
   $light-bg: #f5ebe0;
   $light-text: #1b1c1d;
+
+  --primary-color: #3b82f6;
 
   --mat-menu-container-color: #{$light-bg};
   --mat-icon-button-icon-color: #{$light-text};
@@ -153,4 +157,12 @@ body {
     /* Soft shadow to make it float */
     box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3) !important;
   }
+}
+
+.share-dialog .mat-mdc-dialog-surface {
+  background: linear-gradient(135deg, #e7d7c1 20%, #dedbd2 70%) !important;
+}
+
+html.dark .share-dialog .mat-mdc-dialog-surface {
+  background: linear-gradient(135deg, rgb(9, 31, 44) 20%, rgba(22, 26, 32, 1) 70%) !important;
 }

@@ -69,4 +69,40 @@ export class ChatDbService {
       headers: this.getAuthHeaders()
     });
   }
+
+  // --- NEW: SHARE METHODS (Express/Node.js) ---
+
+  /**
+   * Generates a public share link for a specific chat.
+   */
+  createShareLink(chatId: string): Observable<{ shareId: string; shareUrl: string }> {
+    return this.http.post<{ shareId: string; shareUrl: string }>(
+      `${this.apiUrl}/share/create`,
+      { chatId },
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /**
+   * Public: Fetches a preview of the shared chat (Title, etc.)
+   * Does NOT require auth headers necessarily, but usually good to have if user is logged in.
+   */
+  getSharedPreview(shareId: string): Observable<{
+    shareId: string; title: string; messages: []; createdAt: Date 
+}> {
+    return this.http.get<{ title: string; messages: []; createdAt: Date, shareId: string }>(
+      `${this.apiUrl}/share/${shareId}/preview`
+    );
+  }
+
+  /**
+   * Imports the shared chat into the current user's account.
+   */
+  importSharedChat(shareId: string): Observable<{ chatId: string }> { 
+    return this.http.post<{ chatId: string }>(
+      `${this.apiUrl}/share/${shareId}/import`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
 }

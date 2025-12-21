@@ -1,0 +1,64 @@
+:host ::ng-deep .mat-mdc-text-field-wrapper {
+    padding: 5px !important;
+    background: transparent !important;
+}
+
+:host ::ng-deep .mat-mdc-form-field-infix {
+    padding: 0 !important;
+}
+
+.input-field {
+    position: relative;
+}
+
+.input {
+    background-color: var(--mat-menu-container-color) !important;
+    border: none !important;
+    padding: 5px 5px !important;
+    width: 100%;
+    height: 50px;
+    border-radius: 25px;
+    box-shadow: 0 0px 5px rgb(0 0 0 / 19%);
+    outline: none !important;
+    padding-right: 120px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.copy-btn {
+    position: absolute;
+    right: 5px;
+    width: 100px;
+    height: 40px;
+    top: 5px;
+    border-radius: 20px;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-text {
+    text-wrap: nowrap;
+}
+
+.copy-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.top,
+.down {
+    padding: var(--mat-dialog-headline-padding);
+}
+
+.share-options img {
+    width: 75px;
+    height: 75px;
+}
+
+.title::before {
+    content: none !important;
+}

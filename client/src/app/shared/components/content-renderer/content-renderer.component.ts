@@ -13,16 +13,13 @@ import { MatButtonModule } from '@angular/material/button';
 
 // Services
 import { ThemeService } from '../../../core/services/theme.services';
-import { MarkdownParserService, ContentBlock as ParserBlock } from '../../../core/services/markdown-parser.service';
+import { MarkdownParserService, ContentBlock } from '../../../core/services/markdown-parser.service';
 
 // Directives & Components
 import { HighlightDirective } from '../../directives/highlight.directive';
 import { TableTemplateComponent } from '../table-template/table-template.component';
 import { StreamingTextComponent } from '../streaming-text/streaming-text';
-import { Source } from '../../../store/chat/chat.state'; // Ensure this import exists
-
-export type ImageBlock = { type: 'image_url' | 'image'; content: string };
-export type ComponentContentBlock = ParserBlock | ImageBlock;
+import { Source } from '../../../store/chat/chat.state'; 
 
 @Component({
   selector: 'app-content-renderer-component',
@@ -43,7 +40,6 @@ export class ContentRendererComponent implements OnChanges {
   @Input() content?: string | any;
   @Input() sender?: string;
   @Input() type?: string;
-  // NEW: Accept sources to pass down to streaming text
   @Input() sources?: Source[] = []; 
 
   private themeService = inject(ThemeService);
@@ -51,7 +47,8 @@ export class ContentRendererComponent implements OnChanges {
 
   isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
   
-  blocks: ComponentContentBlock[] = [];
+  // Use the ContentBlock type from the service which now includes ImageBlock
+  blocks: ContentBlock[] = [];
   private expandedBlocks = new Set<number>(); 
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -68,22 +65,28 @@ export class ContentRendererComponent implements OnChanges {
     }
   }
 
-  parse(content: string | any): ComponentContentBlock[] {
+  parse(content: string | any): ContentBlock[] {
+    // 1. Check if the message ITSELF is just an image (e.g. User uploaded image)
     if (this.type === 'image_url' || this.type === 'image') {
         return [{ type: 'image_url', content: content }];
     }
-    if (typeof content !== 'string') {
-      return [{ type: 'text', content: content }];
-    }
-    const isImageUrl = content.startsWith('data:image') || 
-                       (content.startsWith('http') && /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(content));
+    
+    // 2. Check content string for raw Base64 or Image URL
+    if (typeof content === 'string') {
+        const isRawImageUrl = content.startsWith('data:image') || 
+                              (content.startsWith('http') && /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(content));
 
-    if (isImageUrl) {
-      return [{ type: 'image_url', content: content }];
+        if (isRawImageUrl) {
+          return [{ type: 'image_url', content: content }];
+        }
     }
+
+    // 3. User messages are just text (no markdown parsing for performance/safety)
     if (this.sender === 'user') {
       return [{ type: 'text', content: content }];
     }
+
+    // 4. AI Messages -> Parse Markdown (Now handles mixed text/images/code)
     return this.markdownService.parse(content);
   }
 

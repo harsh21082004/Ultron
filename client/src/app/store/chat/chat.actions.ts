@@ -175,3 +175,48 @@ export const translateTextFailure = createAction(
   '[Chat API] Translate Text Failure',
   props<{ error: string }>()
 );
+
+export const shareChat = createAction(
+  '[Chat] Share Chat',
+  props<{ chatId: string}>()
+);
+
+export const shareChatSuccess = createAction(
+  '[Chat API] Share Chat Success',
+  props<{ shareUrl: string, shareId: string }>()
+);
+
+export const shareChatFailure = createAction(
+  '[Chat API] Share Chat Failure',
+  props<{ error: string }>()
+);
+
+export const loadSharedChat = createAction(
+  '[Chat] Load Shared Chat',
+  props<{ shareId: string }>()
+);
+
+export const loadSharedChatSuccess = createAction(
+  '[Chat] Load Shared Chat Success',
+  props<{ messages: ChatMessage[], title: string, createdAt: Date, shareId: string }>()
+);
+
+export const loadSharedChatFailure = createAction(
+  '[Chat] Load Shared Chat Failure',
+  props<{ error: string }>()
+);
+
+export const saveSharedConversation = createAction(
+  '[Chat] Save Shared Conversation', 
+  props<{ shareId: string }>()
+);
+
+export const saveSharedConversationSuccess = createAction(
+  '[Chat] Save Shared Conversation Success',
+  props<{ chatId: string }>()
+);
+
+export const saveSharedConversationFailure = createAction(
+  '[Chat] Save Shared Conversation Failure',
+  props<{ error: string }>()
+)
