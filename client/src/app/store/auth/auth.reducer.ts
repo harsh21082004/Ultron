@@ -1,82 +1,72 @@
 import { createReducer, on } from '@ngrx/store';
-import * as AuthActions from './auth.actions';
-import { AuthState, initialAuthState } from './auth.state';
+import { AuthActions, AuthApiActions } from './auth.actions';
+import { initialAuthState } from './auth.state';
 
 export const authReducer = createReducer(
-  initialAuthState, // Use the imported initial state
+  initialAuthState,
 
-  // --- LOADING/FAILURE HANDLERS ---
-
-  // Set loading true for all starting actions
+  // --- TRIGGER ACTIONS (Set Loading) ---
   on(
-    AuthActions.initSession, 
-    AuthActions.signup, 
-    AuthActions.login, 
-    AuthActions.loginWithGoogle, 
+    AuthActions.initSession,
+    AuthActions.login,
+    AuthActions.signup,
+    AuthActions.loginWithGoogle,
     AuthActions.loginWithGitHub,
+    AuthActions.updateUserProfile,
     (state) => ({
+      ...state,
+      loading: true,
+      error: null
+    })
+  ),
+
+  // --- SUCCESS ACTIONS ---
+  on(
+    AuthApiActions.loginSuccess,
+    AuthApiActions.signupSuccess,
+    AuthApiActions.initSessionSuccess,
+    (state, { user }) => ({
+      ...state,
+      user: user,
+      loading: false,
+      error: null
+    })
+  ),
+
+  on(AuthApiActions.updateUserProfileSuccess, (state, { user }) => ({
     ...state,
-    loading: true,
-    error: null,
+    // Merge new profile data with existing user state (keeping token if not returned)
+    user: state.user ? { ...state.user, ...user } : user,
+    loading: false,
+    error: null
   })),
 
-  // Handle all failures
+  // --- FAILURE ACTIONS ---
   on(
-    AuthActions.signupFailure, 
-    AuthActions.loginFailure, 
+    AuthApiActions.loginFailure,
+    AuthApiActions.signupFailure,
+    AuthApiActions.updateUserProfileFailure,
     (state, { error }) => ({
+      ...state,
+      loading: false,
+      error: error
+    })
+  ),
+
+  on(AuthApiActions.initSessionFailure, (state) => ({
     ...state,
     user: null,
     loading: false,
-    error,
-  })),
-
-  // Handle session init failure (resets to initial state)
-  on(AuthActions.initSessionFailure, (state) => ({
-    ...initialAuthState,
-    loading: false
-  })),
-
-  // --- SUCCESS HANDLERS ---
-
-  // All successful auth actions land here
-  on(
-    AuthActions.initSessionSuccess, 
-    AuthActions.signupSuccess, 
-    AuthActions.loginSuccess, 
-    (state, { user }) => ({
-    ...state,
-    user,
-    loading: false,
-    error: null,
+    error: null
   })),
 
   // --- LOGOUT ---
   on(AuthActions.logout, (state) => ({
     ...state,
-    loading: true, // Set loading true while logout happens
-  })),
-  
-  on(AuthActions.logoutSuccess, (state) => ({
-    ...initialAuthState, // Reset to initial state on logout success
+    loading: true
   })),
 
-  // Your getUserDetails actions are implicitly handled by the
-  // 'initSession' handlers if you re-use them, or you can add:
-  on(AuthActions.getUserDetails, (state) => ({
-    ...state,
-    loading: true,
-    error: null,
-  })),
-  on(AuthActions.getUserDetailsSuccess, (state, { user }) => ({
-    ...state,
-    user: user,
-    loading: false,
-    error: null,
-  })),
-  on(AuthActions.getUserDetailsFailure, (state, { error }) => ({
-    ...state,
-    loading: false, // Don't log out, just set error
-    error,
+  on(AuthApiActions.logoutSuccess, () => ({
+    ...initialAuthState // Reset to clean state
   }))
 );

@@ -1,17 +1,24 @@
-import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, OnInit, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
-import { ThemeService } from '../../../core/services/theme.services';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+// Store & Services
 import { Store } from '@ngrx/store';
 import { AppState } from '../../../store';
-import * as AuthActions from '../../../store/auth/auth.actions';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { selectAuthUser, selectAuthLoading } from '../../../store/auth/auth.selectors';
+import { ThemeService } from '../../../core/services/theme.services';
+import { User } from '../../models/user.model';
+import { AuthActions } from '../../../store/auth/auth.actions';
 
 @Component({
   selector: 'app-settings-dialog',
@@ -24,18 +31,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatIconModule,
     MatListModule,
     MatSelectModule,
+    MatInputModule,
+    MatFormFieldModule,
     MatSlideToggleModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatProgressSpinnerModule
   ],
   template: `
-    <!-- 
-      TIWARI JI: 
-      1. bg-[var(--mat-menu-container-color)]: Uses your global theme background (Light/Dark).
-      2. text-[var(--mat-sys-on-surface)]: Uses your global text color.
-    -->
     <div class="settings-container bg-[var(--mat-menu-container-color)] text-[var(--mat-sys-on-surface)] flex flex-col overflow-hidden h-full w-full">
       
-      <!-- Header Bar -->
       <div class="flex-shrink-0 flex items-center justify-between p-4 border-b border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
         <h2 class="text-lg font-semibold tracking-wide">{{ selectedCategory() }}</h2>
         <button mat-icon-button (click)="closeDialog()" class="text-[var(--mat-sys-on-surface)] opacity-60 hover:opacity-100 transition-opacity">
@@ -43,10 +47,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         </button>
       </div>
 
-      <!-- Two-column layout -->
       <div class="flex flex-grow overflow-hidden">
         
-        <!-- Left Navigation Pane -->
         <div class="nav-pane border-r border-black/10 dark:border-white/10 p-2 overflow-y-auto custom-scrollbar transition-all duration-300"
              [ngClass]="isMobileView ? 'w-[60px] items-center flex flex-col' : 'w-1/3'">
           <mat-nav-list class="w-full">
@@ -57,7 +59,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
                 class="mb-1 transition-colors duration-200 hover:bg-black/5 dark:hover:bg-white/5"
                 [ngClass]="isMobileView ? 'rounded-full w-10 h-10 mx-auto justify-center px-0' : 'rounded-full'"
                 [matTooltip]="isMobileView ? item.name : ''"
-                [class.mat-list-mobile]="isMobileView"
                 [matTooltipPosition]="'right'">
                 
                 <mat-icon matListItemIcon class="mat-icon text-[var(--mat-sys-on-surface)] opacity-70" 
@@ -75,34 +76,71 @@ import { MatTooltipModule } from '@angular/material/tooltip';
           </mat-nav-list>
         </div>
 
-        <!-- Right Content Pane -->
-        <div class="content-pane p-4 sm:p-6 overflow-y-auto custom-scrollbar"
+        <div class="content-pane p-4 sm:p-6 overflow-y-auto custom-scrollbar relative"
              [ngClass]="isMobileView ? 'w-[calc(100%-60px)]' : 'w-2/3'">
           
-          <div class="fade-in">
+          @if (isLoading()) {
+             <div class="absolute inset-0 bg-black/10 dark:bg-white/5 z-50 flex items-center justify-center backdrop-blur-sm">
+                <mat-spinner diameter="40"></mat-spinner>
+             </div>
+          }
+
+          <div class="fade-in max-w-lg mx-auto">
             @switch (selectedCategory()) {
-              
+              @case ('Profile') {
+                <div class="flex flex-col gap-6 items-center">
+                  
+                  <div class="relative group cursor-pointer" (click)="fileInput.click()">
+                    <img [src]="editData.profilePic || 'assets/images/profile.png'" 
+                         class="w-28 h-28 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 shadow-md group-hover:opacity-80 transition-opacity">
+                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <mat-icon class="text-white drop-shadow-md text-3xl font-bold">edit</mat-icon>
+                    </div>
+                    <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
+                  </div>
+                  <p class="text-xs text-center opacity-60 -mt-4">Click to change avatar</p>
+
+                  <div class="w-full">
+                    <label class="block text-sm font-medium opacity-80 mb-1">Display Name</label>
+                    <mat-form-field appearance="outline" class="w-full density-compact">
+                      <input matInput [(ngModel)]="editData.name" placeholder="Your Name">
+                      <mat-icon matSuffix>edit</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="w-full">
+                    <label class="block text-sm font-medium opacity-80 mb-1">Email</label>
+                    <mat-form-field appearance="outline" class="w-full density-compact opacity-70">
+                      <input matInput [value]="currentUser()?.email" disabled>
+                      <mat-icon matSuffix>lock</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <button mat-flat-button color="primary" class="w-full mt-2" 
+                          [disabled]="!hasChanges() || isLoading()" 
+                          (click)="saveProfile()">
+                    Save Changes
+                  </button>
+                  
+                  <div class="w-full border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                  <button mat-stroked-button color="warn" (click)="logOut()" class="w-full">
+                    <mat-icon>logout</mat-icon> Sign Out
+                  </button>
+                </div>
+              }
+
               @case ('General') {
                 <div class="flex flex-col gap-6">
                   <div class="setting-item">
-                    <label class="block text-sm font-medium opacity-80 mb-1">Language</label>
-                    <p class="text-xs opacity-50 mb-3">Select the language you primarily use.</p>
+                    <label class="block text-sm font-medium opacity-80 mb-1">AI Language</label>
+                    <p class="text-xs opacity-50 mb-3">Ultron will respond to you in this language.</p>
                     <mat-form-field appearance="outline" class="w-full density-compact">
-                      <mat-select [value]="'auto'">
-                        <mat-option value="auto">Auto-detect</mat-option>
-                        <mat-option value="en">English</mat-option>
-                        <mat-option value="es">Spanish</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
-                  <div class="setting-item">
-                    <label class="block text-sm font-medium opacity-80 mb-1">Spoken Language</label>
-                    <p class="text-xs opacity-50 mb-3">For best results, select the language you mainly speak.</p>
-                    <mat-form-field appearance="outline" class="w-full density-compact">
-                      <mat-select [value]="'auto'">
-                        <mat-option value="auto">Auto-detect</mat-option>
-                        <mat-option value="en-US">English (US)</mat-option>
-                        <mat-option value="en-GB">English (UK)</mat-option>
+                      <mat-select [(value)]="editData.preferences.language" (selectionChange)="savePreference('language', $event.value)">
+                        <mat-option value="English">English</mat-option>
+                        <mat-option value="Hindi">Hindi (हिंदी)</mat-option>
+                        <mat-option value="Spanish">Spanish (Español)</mat-option>
+                        <mat-option value="French">French (Français)</mat-option>
                       </mat-select>
                     </mat-form-field>
                   </div>
@@ -112,10 +150,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
               @case ('Appearance') {
                 <div class="flex flex-col gap-6">
                   <div class="setting-item">
-                    <label class="block text-sm font-medium opacity-80 mb-1">Theme</label>
-                    <p class="text-xs opacity-50 mb-3">Customize the look and feel.</p>
+                    <label class="block text-sm font-medium opacity-80 mb-1">App Theme</label>
                     <mat-form-field appearance="outline" class="w-full density-compact">
-                      <mat-select [value]="currentTheme()" (valueChange)="toggleTheme()">
+                      <mat-select [value]="currentTheme()" (valueChange)="onThemeChange($event)">
                         <mat-option value="light">
                           <div class="flex items-center gap-2"><mat-icon class="text-sm">light_mode</mat-icon> Light Mode</div>
                         </mat-option>
@@ -127,18 +164,19 @@ import { MatTooltipModule } from '@angular/material/tooltip';
                   </div>
                 </div>
               }
-
-              @case ('Account') {
-                <div class="flex flex-col gap-6">
-                  <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <h3 class="text-red-500 font-medium text-sm mb-1">Session Management</h3>
-                    <p class="text-xs opacity-60 mb-4">Sign out of your account on this device.</p>
-                    <button mat-flat-button color="warn" (click)="logOut()" class="w-full">
-                      <mat-icon>logout</mat-icon>
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
+              @case ('Data Controls') {
+                 <div class="flex flex-col gap-4">
+                    <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <h3 class="font-medium">Export Data</h3>
+                        <p class="text-xs opacity-60 mb-3">Download a JSON file of your chat history.</p>
+                        <button mat-stroked-button>Export JSON</button>
+                    </div>
+                    <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <h3 class="text-red-500 font-medium">Delete History</h3>
+                        <p class="text-xs opacity-60 mb-3">Permanently remove all chats. This cannot be undone.</p>
+                        <button mat-flat-button color="warn">Delete All Chats</button>
+                    </div>
+                 </div>
               }
 
               @default {
@@ -155,61 +193,69 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     </div>
   `,
   styles: [`
-    /* Scrollbar theming */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { 
-      background-color: rgba(128, 128, 128, 0.2); 
-      border-radius: 20px; 
-    }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(128, 128, 128, 0.2); border-radius: 20px; }
     
-    :host {
-      display: block;
-      height: 100%;
-      width: 100%;
-    }
-    
+    :host { display: block; height: 100%; width: 100%; }
     .mat-icon-mobile{ margin: 0 9.6px; }
-    .mat-list-mobile{ width: 100%; height: auto; aspect-ratio: 1 / 1; }
-
-    /* Active Item - Uses a transparent overlay to work on both Light/Dark */
-    .nav-pane .mat-mdc-list-item.active-item {
-      background-color: rgba(128, 128, 128, 0.15); 
-    }
-
-    :host ::ng-deep .mat-mdc-list-item.justify-center .mdc-list-item__content {
-       justify-content: center !important;
-       padding: 0 !important;
-    }
-
-    /* Form Field Overrides:
-       We use rgba() backgrounds to look good in both light and dark mode without needing hardcoded hex.
-    */
+    .nav-pane .mat-mdc-list-item.active-item { background-color: rgba(128, 128, 128, 0.15); }
+    
     :host ::ng-deep .mat-mdc-form-field.density-compact .mat-mdc-text-field-wrapper {
       padding-top: 6px; padding-bottom: 6px; 
-      background-color: rgba(128, 128, 128, 0.08) !important; /* Semi-transparent gray */
+      background-color: rgba(128, 128, 128, 0.08) !important;
     }
-    
-    /* Text Color Overrides for Inputs */
-    :host ::ng-deep .mat-mdc-select-value, 
-    :host ::ng-deep .mat-mdc-select-arrow, 
-    :host ::ng-deep .mat-mdc-form-field-label {
+    :host ::ng-deep .mat-mdc-select-value, :host ::ng-deep .mat-mdc-select-arrow, :host ::ng-deep .mat-mdc-form-field-label, :host ::ng-deep .mat-mdc-input-element {
       color: var(--mat-sys-on-surface) !important;
     }
-
     .fade-in { animation: fadeIn 0.3s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   `]
 })
 export class SettingsDialogComponent implements OnInit {
-  themeService = inject(ThemeService);
-  dialogRef = inject(MatDialogRef<SettingsDialogComponent>);
+  // Dependencies
+  private themeService = inject(ThemeService);
+  private dialogRef = inject(MatDialogRef<SettingsDialogComponent>);
   private store = inject(Store<AppState>);
 
-  selectedCategory = signal('General');
+  // Signals
+  selectedCategory = signal('Profile'); // Default to Profile
   currentTheme = computed(() => this.themeService.currentTheme());
+  currentUser = this.store.selectSignal(selectAuthUser);
+  isLoading = this.store.selectSignal(selectAuthLoading);
+
+  // Local Form State
+  editData: Partial<User> & { preferences: any } = { 
+    name: '', 
+    profilePic: '', 
+    preferences: { language: 'English', theme: 'light' } 
+  };
 
   isMobileView = window.innerWidth <= 840;
+
+  settingsMenu = [
+    { id: 'Profile', name: 'Profile', icon: 'person' },
+    { id: 'General', name: 'General', icon: 'settings' },
+    { id: 'Appearance', name: 'Appearance', icon: 'palette' },
+    { id: 'Data Controls', name: 'Data Controls', icon: 'dataset' },
+  ];
+
+  constructor() {
+    // Sync local form with Store User Data
+    effect(() => {
+      const user = this.currentUser();
+      if (user) {
+        this.editData = {
+          name: user.name,
+          profilePic: user.profilePic,
+          preferences: {
+            language: user.preferences?.language || 'English',
+            theme: user.preferences?.theme || 'light' // Default to 'light' if not set
+          }
+        };
+      }
+    });
+    console.log(this.editData)
+  }
 
   @HostListener('window:resize', ['$event'])
   onResize(event: Event) {
@@ -217,30 +263,68 @@ export class SettingsDialogComponent implements OnInit {
     this.updateDialogSize();
   }
 
-  updateDialogSize() {
-    if (this.isMobileView) {
-      this.dialogRef.updateSize('95%', '100%');
-    } else {
-      this.dialogRef.updateSize('600px', '500px');
-    }
-  }
-
   ngOnInit() {
     this.updateDialogSize();
   }
 
-  settingsMenu = [
-    { id: 'General', name: 'General', icon: 'settings' },
-    { id: 'Appearance', name: 'Appearance', icon: 'palette' },
-    { id: 'Personalization', name: 'Personalization', icon: 'tune' },
-    { id: 'Data Controls', name: 'Data Controls', icon: 'database' },
-    { id: 'Security', name: 'Security', icon: 'security' },
-    { id: 'Help', name: 'Help', icon: 'help' },
-    { id: 'Account', name: 'Account', icon: 'person' }
-  ];
+  updateDialogSize() {
+    this.isMobileView 
+      ? this.dialogRef.updateSize('95%', '100%') 
+      : this.dialogRef.updateSize('700px', '550px');
+  }
 
-  toggleTheme() {
-    this.themeService.toggleTheme();
+  // --- ACTIONS ---
+
+  // 1. Theme Change
+  onThemeChange(newTheme: string) {
+    // 1. Update UI immediately
+    if (newTheme === 'light') this.themeService.setTheme('light');
+    if (newTheme === 'dark') this.themeService.setTheme('dark');
+
+    // 2. Persist to DB
+    this.savePreference('theme', newTheme);
+  }
+
+  // 2. Profile Picture Upload
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Update local preview immediately
+        this.editData.profilePic = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // 3. Save Logic
+  hasChanges(): boolean {
+    const user = this.currentUser();
+    if (!user) return false;
+    return this.editData.name !== user.name || this.editData.profilePic !== user.profilePic;
+  }
+
+  saveProfile() {
+    // Dispatch Action to Update API
+    this.store.dispatch(AuthActions.updateUserProfile({
+      data: {
+        name: this.editData.name,
+        profilePic: this.editData.profilePic
+      }
+    }));
+  }
+
+  savePreference(key: string, value: any) {
+    // Update deeply nested preference
+    const currentPrefs = this.editData.preferences || {};
+    const newPrefs = { ...currentPrefs, [key]: value };
+
+    console.log('Saving preference:', newPrefs);
+    
+    this.store.dispatch(AuthActions.updateUserPreferences({
+      preferences: newPrefs
+    }));
   }
 
   closeDialog(): void {

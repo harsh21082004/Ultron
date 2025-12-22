@@ -28,12 +28,21 @@ class SessionManager:
         """
         Restores chat history from the DB format (Pydantic models) 
         into LangChain format (HumanMessage/AIMessage).
+        
+        IMPLEMENTS SHORT-TERM MEMORY: Only loads the last N messages.
         """
+        WINDOW_SIZE = 20  # Keep last 20 messages (approx 10 exchanges)
+
         with self.store_lock:
             history = self.get_session_history(session_id)
             history.clear()
 
-            for msg in messages:
+            # --- HYBRID MEMORY STEP 1: SLIDING WINDOW ---
+            # Slice to get only the most recent messages. 
+            # Older messages are retrieved via RAG (Vector Store) instead.
+            recent_messages = messages[-WINDOW_SIZE:] if len(messages) > WINDOW_SIZE else messages
+
+            for msg in recent_messages:
                 content_blocks = []
                 
                 # Parse content blocks (Text vs Image)
@@ -50,6 +59,6 @@ class SessionManager:
                 if msg.sender == 'user':
                     history.add_message(HumanMessage(content=content_blocks))
                 elif msg.sender == 'ai':
-                    # Simplified text reconstruction for history to save tokens context window
+                    # Simplified text reconstruction for history to save context window tokens
                     text_only = " ".join([b['text'] for b in content_blocks if b.get('type') == 'text'])
                     history.add_message(AIMessage(content=text_only))

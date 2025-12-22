@@ -21,13 +21,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AppState } from '../../../store';
-import * as ChatActions from '../../../store/chat/chat.actions';
-import { 
-  selectChatMessages, 
-  selectCurrentChatId, 
-  selectIsLoading, 
-  selectIsStreaming 
-} from '../../../store/chat/chat.selectors';
+// UPDATED: Import the grouped selectors and actions
+import { ChatSelectors } from '../../../store/chat/chat.selectors';
+import { ChatPageActions } from '../../../store/chat/chat.actions';
 import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state'; 
 import { selectAuthUser } from '../../../store/auth/auth.selectors';
 import { User } from '../../models/user.model';
@@ -72,20 +68,20 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('chatContainer') private chatContainer!: ElementRef; 
   @ViewChild(ChatInputComponent) private chatInputComponent!: ChatInputComponent;
 
+  // Observables using the new Selector Group
   public messages$: Observable<ChatMessage[]>;
   public isLoading$: Observable<boolean>;
   public isStreaming$: Observable<boolean>;
   public streamStatus$: Observable<StreamStatus | null>; 
   public user$: Observable<User | null>;
-  public isSharedChatView = false;
   
+  public isSharedChatView = false;
   public promptSuggestions = PROMPT_SUGGESTIONS;
   public isMobileView = false;
-  
   public showReasoningLogs = false; 
   
   // Flag to track if we need to perform the initial scroll-to-bottom
-  private isInitialLoad = true;
+  private isInitialLoad = true; 
 
   private store = inject(Store<AppState>);
   private route = inject(ActivatedRoute);
@@ -97,12 +93,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   private messagesSub!: Subscription;
 
   constructor() {
-    this.messages$ = this.store.select(selectChatMessages);
-    this.isLoading$ = this.store.select(selectIsLoading);
-    this.isStreaming$ = this.store.select(selectIsStreaming);
+    // UPDATED: Use Grouped Selectors
+    this.messages$ = this.store.select(ChatSelectors.selectMessages);
+    this.isLoading$ = this.store.select(ChatSelectors.selectIsLoading);
+    this.isStreaming$ = this.store.select(ChatSelectors.selectIsStreaming);
+    this.streamStatus$ = this.store.select(ChatSelectors.selectStreamStatus);
     this.user$ = this.store.select(selectAuthUser);
-    
-    this.streamStatus$ = this.store.select((state: any) => state.chat.streamStatus);
 
     this.updateIsMobileView();
   }
@@ -122,37 +118,54 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit(): void {
     this.routeSub = this.route.paramMap.pipe(
-      withLatestFrom(this.store.select(selectCurrentChatId))
-    ).subscribe(([params, currentLoadedChatId]) => {
+      withLatestFrom(
+        this.store.select(ChatSelectors.selectCurrentChatId),
+        this.store.select(ChatSelectors.selectShareId)
+      )
+    ).subscribe(([params, currentLoadedChatId, currentShareId]) => {
       const urlChatId = params.get('id');
-      const shareId = params.get('shareId'); 
+      const routeShareId = params.get('shareId');
 
-      this.store.dispatch(ChatActions.clearActiveChat());
-      
-      // Reset initial load flag when switching chats so it scrolls to bottom again
+      // Reset initial load flag
       this.isInitialLoad = true;
 
-      // 1. Shared Chat Route (High Priority)
-      if (shareId) {
-        // Dispatch specific action to load shared chat content
-        this.store.dispatch(ChatActions.loadSharedChat({ shareId }));
+      // --- CASE 1: Shared Chat Route ---
+      if (routeShareId) {
         this.isSharedChatView = true;
-      } 
-      // 2. Normal Chat Route (Loading existing history)
-      else if (urlChatId) {
-        this.isSharedChatView = false;
-        // Only load if it's different from what's currently in memory
-        if (urlChatId !== currentLoadedChatId) {
-          this.store.dispatch(ChatActions.loadChatHistory({ chatId: urlChatId }));
+        
+        // FIX: Explicitly clear the active chat ID.
+        // This ensures 'currentChatId' becomes null, so the Sidebar deselects the old chat.
+        this.store.dispatch(ChatPageActions.clearActiveChat());
+
+        // Only load if we aren't already viewing this specific shared chat
+        if (routeShareId !== currentShareId) {
+             this.store.dispatch(ChatPageActions.loadSharedChat({ shareId: routeShareId }));
         }
       } 
-      // 3. New Chat / Root
+      
+      // --- CASE 2: Normal Chat Route ---
+      else if (urlChatId) {
+        this.isSharedChatView = false;
+        
+        // Clear share state so the header switches back to normal mode
+        if (currentShareId) {
+            this.store.dispatch(ChatPageActions.clearShareState());
+        }
+
+        // Logic: Reload if ID changed OR if we just came from a Shared View
+        if (urlChatId !== currentLoadedChatId || !!currentShareId) {
+          this.store.dispatch(ChatPageActions.enterChat({ chatId: urlChatId }));
+        }
+      } 
+      
+      // --- CASE 3: New Chat / Root ---
       else {
         this.isSharedChatView = false;
-        // FIX: Always clear the chat when hitting the root route. 
-        // This handles cases where we come from a Shared Chat (where currentLoadedChatId might be null or different)
-        // and ensures the view is reset to empty.
-        this.store.dispatch(ChatActions.clearActiveChat());
+        // Clear everything
+        if (currentShareId) {
+            this.store.dispatch(ChatPageActions.clearShareState());
+        }
+        this.store.dispatch(ChatPageActions.clearActiveChat());
       }
     });
   }
@@ -179,16 +192,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   public async handleSendMessage(event: ChatMessageEvent): Promise<void> {
     this.showReasoningLogs = false;
     
-    // We do NOT call scrollToBottom here anymore.
-    // Instead, we wait for the new message to render, then scroll TO THAT message.
-    
     let finalMessage = event.message;
     let base64Image: string | undefined = undefined;
 
+    // Handle File Attachments
     if (event.files && event.files.length > 0) {
       for (const file of event.files) {
         if (file.type.startsWith('audio')) {
           try {
+            // Using firstValueFrom for cleaner async/await
             const res = await firstValueFrom(this.audioService.transcribe(file));
             finalMessage += ` ${res.text}`; 
           } catch (err) {
@@ -212,7 +224,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   public handleStopGeneration(): void {
-    this.store.dispatch(ChatActions.stopStream());
+    // UPDATED: Use Page Action
+    this.store.dispatch(ChatPageActions.stopStream());
   }
 
   public handleSuggestionClick(prompt: string): void {
@@ -237,16 +250,18 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   private processNewMessage(message: string, image?: string): void {
     let currentChatId = this.route.snapshot.paramMap.get('id');
     const newId = crypto.randomUUID();
+    
     const payload = { 
       message: message.trim(), 
       chatId: currentChatId || newId,
       image 
     };
 
-    if (currentChatId) {
-      this.store.dispatch(ChatActions.sendMessage(payload));
-    } else {
-      this.store.dispatch(ChatActions.sendMessage(payload));
+    // UPDATED: Use Page Action
+    this.store.dispatch(ChatPageActions.sendMessage(payload));
+
+    // Navigate to new URL if this was a brand new chat
+    if (!currentChatId) {
       this.router.navigate(['/chat', newId]);
     }
   }

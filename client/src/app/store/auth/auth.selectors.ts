@@ -1,34 +1,35 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { AuthState } from './auth.state';
 
-// Select the auth feature state from the root state
+// Select the auth feature state
 export const selectAuthState = createFeatureSelector<AuthState>('auth');
 
-
-// Select the user from the auth state
+// Select User
 export const selectAuthUser = createSelector(
   selectAuthState,
-  (state: AuthState) => state.user
+  (state) => state.user
 );
 
-// Select the loading status from the auth state
+// Select Loading
 export const selectAuthLoading = createSelector(
   selectAuthState,
-  (state: AuthState) => state.loading
+  (state) => state.loading
 );
 
-// Select the error from the auth state
+// Select Error
 export const selectAuthError = createSelector(
   selectAuthState,
-  (state: AuthState) => state.error
+  (state) => state.error
 );
 
+// Helper: Is Logged In?
 export const selectIsAuthenticated = createSelector(
   selectAuthUser,
   (user) => !!user
 );
 
+// Helper: Get Token
 export const selectAuthToken = createSelector(
   selectAuthUser,
   (user) => user ? user.token : null
-)
+);

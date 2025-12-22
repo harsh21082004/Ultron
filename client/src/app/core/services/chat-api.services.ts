@@ -11,7 +11,7 @@ const environment = {
 };
 
 export interface StreamEvent {
-  type: 'text' | 'status' | 'log' | 'sources';
+  type: 'text' | 'status' | 'log' | 'sources' | 'update_pref';
   value: string;
 }
 
@@ -38,12 +38,19 @@ export class ChatApiService {
     };
   }
 
-  sendMessageStream(message: string, chatId: string, image?: string): Observable<StreamEvent> {
+  // UPDATED: Added 'language' parameter (default: 'English')
+  sendMessageStream(
+    message: string, 
+    chatId: string, 
+    image?: string, 
+    language: string = 'English',
+    userContext?: any
+  ): Observable<StreamEvent> {
     return new Observable(subscriber => {
       const controller = new AbortController();
       const signal = controller.signal;
 
-      const payload: any = { message, chatId };
+      const payload: any = { message, chatId, language, user_context: userContext }; // Included language
       if (image) {
         payload.image = image;
       }
@@ -71,18 +78,18 @@ export class ChatApiService {
             break;
           }
 
-          // --- ROBUST PARSING LOGIC ---
-          // Updated Regex: Now includes __ANSWER__
-          // Splits string BEFORE any of these tags, keeping the tag at the start of the split part.
-          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__):)/).filter(Boolean);
+          // Robust Parsing Logic
+          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__|__UPDATE_PREF__):)/).filter(Boolean);
 
           for (const part of parts) {
             let processedPart = part;
             
-            // Check for tags
             if (part.startsWith('__STATUS__:')) {
               currentTag = 'status';
               processedPart = part.replace('__STATUS__:', '');
+            } else if (part.startsWith('__UPDATE_PREF__:')) {
+               currentTag = 'update_pref';
+               processedPart = part.replace('__UPDATE_PREF__:', '');
             } else if (part.startsWith('__THOUGHT__:')) {
               currentTag = 'log';
               processedPart = part.replace('__THOUGHT__:', '');
@@ -90,14 +97,9 @@ export class ChatApiService {
               currentTag = 'sources';
               processedPart = part.replace('__SOURCES__:', '');
             } else if (part.startsWith('__ANSWER__:')) {
-              // Explicit Answer tag -> Switch to text mode
               currentTag = 'text'; 
               processedPart = part.replace('__ANSWER__:', '');
             }
-
-            // Note: If a part DOES NOT start with a tag, we keep the `currentTag` as is.
-            // This supports multi-chunk thoughts or multi-chunk answers.
-            // But since we now have __ANSWER__, the transition from Thought -> Answer is guaranteed to be caught.
 
             const cleanValue = processedPart; 
 
@@ -108,8 +110,10 @@ export class ChatApiService {
                     subscriber.next({ type: 'log', value: cleanValue.trim() });
                 } else if (currentTag === 'sources') {
                     subscriber.next({ type: 'sources', value: cleanValue.trim() });
+                }else if (currentTag === 'update_pref') {
+                    // Emit the JSON string directly
+                    subscriber.next({ type: 'update_pref', value: cleanValue.trim() });
                 } else {
-                    // Default to text if tag is 'text' or null (for backward compatibility)
                     subscriber.next({ type: 'text', value: cleanValue });
                 }
             }

@@ -1,93 +1,95 @@
 <header class="h-16 relative flex-shrink-0 flex items-center justify-between px-4 header">
+  
   <div class="absolute bottom-0 left-0 w-full z-50">
     @if (isLoading()) {
-    <mat-progress-bar mode="indeterminate" color="primary">
-    </mat-progress-bar>
+      <mat-progress-bar mode="indeterminate" color="primary"></mat-progress-bar>
     }
   </div>
+
   @if(isMobileView){
-  <button class="mobile-drawer-toggle mat-icon-button" aria-label="Open menu" (click)="onMobileMenuToggle()">
-    <mat-icon>menu</mat-icon>
-  </button>
+    <button class="mobile-drawer-toggle mat-icon-button" aria-label="Open menu" (click)="onMobileMenuToggle()">
+      <mat-icon>menu</mat-icon>
+    </button>
   }
+
   <div class="logo cursor-pointer" routerLink="/">
     <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
     <span class="text-xl">Ultron</span>
   </div>
+
   @if(!isMobileView && isSharedChatView){
-    <button matButton [matMenuTriggerFor]="menu">
-    {{ title$ | async}}
-    <mat-icon>keyboard_arrow_down</mat-icon>
-  </button>
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item (click)="handleSaveConversation()">
-      <mat-icon>share</mat-icon>
-      <span>Save Conversation</span>
+    <button matButton [matMenuTriggerFor]="sharedMenu">
+      {{ (title$ | async) || 'Shared Chat' }}
+      <mat-icon>keyboard_arrow_down</mat-icon>
     </button>
-  </mat-menu>
+    <mat-menu #sharedMenu="matMenu">
+      <button mat-menu-item (click)="handleSaveAsConversation()">
+        <mat-icon>save_alt</mat-icon>
+        <span>Import Conversation</span>
+      </button>
+    </mat-menu>
   }
-  @if(!isMobileView && (currentChat$ | async); as currentChat){
-  <button matButton [matMenuTriggerFor]="menu">
-    {{ currentChat?.title}}
-    <mat-icon>keyboard_arrow_down</mat-icon>
-  </button>
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item (click)="handleShare(currentChat?._id)">
-      <mat-icon>share</mat-icon>
-      <span>Share Conversation</span>
+
+  @if(!isMobileView && !isSharedChatView && (currentChat$ | async); as currentChat){
+    <button matButton [matMenuTriggerFor]="chatMenu">
+      {{ currentChat.title }}
+      <mat-icon>keyboard_arrow_down</mat-icon>
     </button>
-    <button mat-menu-item>
-      <mat-icon>edit</mat-icon>
-      <span>Edit</span>
-    </button>
-    <button mat-menu-item>
-      <mat-icon>delete</mat-icon>
-      <span>Delete</span>
-    </button>
-  </mat-menu>
+    <mat-menu #chatMenu="matMenu">
+      <button mat-menu-item (click)="handleShare(currentChat._id)">
+        <mat-icon>share</mat-icon>
+        <span>Share Conversation</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>edit</mat-icon>
+        <span>Edit Title</span>
+      </button>
+      <button mat-menu-item>
+        <mat-icon>delete</mat-icon>
+        <span>Delete</span>
+      </button>
+    </mat-menu>
   }
+
   <div class="flex items-center gap-1 right">
-    <button matIconButton aria-label="icon button with a vertical three dot icon" class="dark-button"
-      (click)="themeService.toggleTheme()">
+    <button matIconButton class="dark-button" (click)="themeService.toggleTheme()">
       <mat-icon class="darkicon">{{isDarkMode() ? light_mode : dark_mode}}</mat-icon>
     </button>
+    
     <div class="flex-shrink-0">
       @if (user$ | async; as user) {
-      <button [matMenuTriggerFor]="profile" matButton class="p-1">
-        <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
-          <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
-            alt="User Profile Picture" referrerpolicy="no-referrer" />
-          <div class="nav-text">
-            <p class="font-medium">{{ user.name }}</p>
-            <p class="text-xs">Free Plan</p>
-          </div>
-        </div>
-      </button>
-      <mat-menu #profile="matMenu" class="w-[250px] px-5 py-2 !rounded-3xl profile-menu">
-        <div class="flex flex-col justify-start items-center">
-          <span>{{user.email}}</span>
-          <div class="relative p-2 mt-5 rounded-md w-full flex flex-col items-center gap-3 cursor-pointer">
-            <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
-              alt="User Profile Picture" referrerpolicy="no-referrer" loading="lazy" />
+        <button [matMenuTriggerFor]="profile" matButton class="p-1">
+          <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
+            <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
+              alt="User" referrerpolicy="no-referrer" />
             <div class="nav-text">
-              <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
-            </div>
-            <div class="flex gap-1 ">
-              <button matButton [disableRipple]="true"
-                class="!rounded-l-[15] !rounded-r-[0] w-25 h-15 !bg-[#0000002b]">Settings</button>
-              <button matButton disableRipple class="!rounded-r-[15] !rounded-l-[0] w-25 h-15 !bg-[#0000002b]"
-                (click)="handleLogout()">Logout</button>
+              <p class="font-medium">{{ user.name }}</p>
+              <p class="text-xs">Free Plan</p>
             </div>
           </div>
-        </div>
-      </mat-menu>
-      } @if( !(user$ | async) && !(loading$ | async)) {
-      <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10"
-        [fontSize]="isMobileView ? 13 : 16" icon="login">
-        <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
-      </app-pink-button-component>
+        </button>
+        <mat-menu #profile="matMenu" class="w-[250px] px-5 py-2 !rounded-3xl profile-menu">
+          <div class="flex flex-col justify-start items-center">
+            <span>{{user.email}}</span>
+            <div class="relative p-2 mt-5 rounded-md w-full flex flex-col items-center gap-3">
+              <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
+                alt="User" referrerpolicy="no-referrer" loading="lazy" />
+              <div class="nav-text mt-2 mb-4">
+                <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
+              </div>
+              <div class="flex gap-1 w-full justify-center">
+                <button matButton [disableRipple]="true" class="!rounded-l-[15] !rounded-r-[0] !bg-[#0000002b]">Settings</button>
+                <button matButton disableRipple class="!rounded-r-[15] !rounded-l-[0] !bg-[#0000002b]" (click)="handleLogout()">Logout</button>
+              </div>
+            </div>
+          </div>
+        </mat-menu>
+      } @else if (!(loading$ | async)) {
+        <app-pink-button-component routerLink="/login" [height]="40" [width]="100" [borderRadius]="10"
+          [fontSize]="isMobileView ? 13 : 16" icon="login">
+          <span [style.fontSize.px]="isMobileView ? 13 : 16">Login</span>
+        </app-pink-button-component>
       }
     </div>
-
   </div>
 </header>

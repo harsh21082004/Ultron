@@ -1,222 +1,77 @@
-import { createAction, props } from '@ngrx/store';
+import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { ChatMessage, Source } from './chat.state';
 
-// --- ACTIONS FOR LOADING HISTORY ---
-export const loadChatHistory = createAction(
-  '[Chat API] Load Chat History',
-  props<{ chatId: string }>()
-);
+// 1. Actions triggered by the User or the UI (Page Events)
+export const ChatPageActions = createActionGroup({
+  source: 'Chat Page',
+  events: {
+    // Navigation / Setup
+    'Enter Chat': props<{ chatId: string }>(),
+    'Clear Active Chat': emptyProps(),
+    'Get All Chats': props<{ userId: string }>(),
+    'Delete All Chats': emptyProps(),
+    'Search Chats': props<{ query: string }>(),
+    
+    // Interaction
+    'Send Message': props<{ message: string; chatId: string; image?: string }>(),
+    'Stop Stream': emptyProps(),
+    
+    // Tools
+    'Transcribe Audio': props<{ file: File }>(),
+    'Analyze Image': props<{ imageUrl: string; prompt?: string }>(),
+    'Translate Text': props<{ text: string; targetLanguage: string }>(),
+    
+    // Sharing
+    'Share Chat': props<{ chatId: string }>(),
+    'Load Shared Chat': props<{ shareId: string }>(),
+    'Save Shared Conversation': props<{ shareId: string }>(),
+    'Clear Share State': emptyProps()
+  }
+});
 
-export const loadChatHistorySuccess = createAction(
-  '[Chat API] Load Chat History Success',
-  props<{ chatId: string, messages: ChatMessage[] }>()
-);
+// 2. Actions triggered by API Responses (Effects -> Reducer)
+export const ChatApiActions = createActionGroup({
+  source: 'Chat API',
+  events: {
+    // History Loading
+    'Load Chat History Success': props<{ chatId: string, messages: ChatMessage[] }>(),
+    'Load Chat History Failure': props<{ chatId: string, error: string }>(),
+    
+    // Streaming Flow
+    'Stream Started': emptyProps(),
+    'Update Stream Status': props<{ status: string }>(),
+    'Add Stream Log': props<{ log: string }>(),
+    'Update Stream Sources': props<{ sources: Source[] }>(),
+    'Receive Stream Chunk': props<{ chunk: string }>(),
+    'Stream Complete': props<{ chatId: string }>(),
+    'Stream Failure': props<{ error: string }>(),
 
-export const loadChatHistoryFailure = createAction(
-  '[Chat API] Load Chat History Failure',
-  props<{ chatId: string, error: string }>()
-);
+    // Saving / Title Generation
+    'Save Chat History Success': props<{ chatId: string, newTitle: string }>(),
+    'Save Chat History Failure': props<{ error: string }>(),
+    'Hydrate History Success': emptyProps(),
+    'Hydrate History Failure': props<{ error: string }>(),
 
-// --- ACTIONS FOR SAVING HISTORY ---
-export const saveChatHistory = createAction(
-  '[Chat API] Save Chat History',
-  props<{ chatId: string; messages: ChatMessage[] }>()
-);
+    // Sidebar Lists
+    'Get All Chats Success': props<{ chats: any[] }>(),
+    'Get All Chats Failure': props<{ error: string }>(),
+    'Search Chats Success': props<{ results: any[] }>(),
+    'Search Chats Failure': props<{ error: string }>(),
 
-export const saveChatHistorySuccess = createAction(
-  '[Chat] Save Chat History Success',
-  props<{ chatId: string, newTitle: string }>()
-);
+    // Tools Results
+    'Transcribe Audio Success': props<{ text: string }>(),
+    'Transcribe Audio Failure': props<{ error: string }>(),
+    'Analyze Image Success': props<{ imageUrl: string; result: string }>(),
+    'Analyze Image Failure': props<{ error: string }>(),
+    'Translate Text Success': props<{ translated: string }>(),
+    'Translate Text Failure': props<{ error: string }>(),
 
-export const saveChatHistoryFailure = createAction(
-  '[Chat API] Save Chat History Failure',
-  props<{ error: string }>()
-);
-
-// --- ACTIONS FOR AI MEMORY ---
-export const hydrateHistorySuccess = createAction(
-  '[Chat API] Hydrate AI Memory Success'
-);
-
-export const hydrateHistoryFailure = createAction(
-  '[Chat API] Hydrate AI Memory Failure',
-  props<{ error: string }>()
-);
-
-// --- ACTIONS FOR REAL-TIME CHAT ---
-export const sendMessage = createAction(
-  '[Chat] Send Message',
-  props<{ message: string; chatId: string; image?: string }>() 
-);
-
-export const streamStarted = createAction(
-  '[Chat] Stream Started'
-);
-
-export const stopStream = createAction(
-  '[Chat] Stop Stream'
-);
-
-export const receiveStreamChunk = createAction(
-  '[Chat] Receive Stream Chunk',
-  props<{ chunk: string }>()
-);
-
-// NEW: Update the main status text (e.g. "Analyzing Image...")
-export const updateStreamStatus = createAction(
-  '[Chat] Update Stream Status',
-  props<{ status: string }>()
-);
-
-// NEW: Add a reasoning step log (e.g. "Identifying Intent...")
-export const addStreamLog = createAction(
-  '[Chat] Add Stream Log',
-  props<{ log: string }>()
-);
-
-// NEW: Update the sources for the current stream
-export const updateStreamSources = createAction(
-  '[Chat] Update Stream Sources',
-  props<{ sources: Source[] }>()
-);
-
-export const streamComplete = createAction(
-  '[Chat] Stream Complete',
-  props<{ chatId: string }>()
-);
-
-export const streamFailure = createAction(
-  '[Chat] Stream Failure',
-  props<{ error: string }>()
-);
-
-// --- CHAT MANAGEMENT ---
-export const getAllChats = createAction(
-  '[Chat] Get All Chats',
-  props<{ userId: string }>()
-);
-
-export const getAllChatsSuccess = createAction(
-  '[Chat] Get All Chats Success',
-  props<{ chats: any[] }>()
-);
-
-export const getAllChatsFailure = createAction(
-  '[Chat] Get All Chats Failure',
-  props<{ error: string }>()
-);
-
-export const clearActiveChat = createAction(
-  '[Chat] Clear Active Chat'
-);
-
-export const deleteAllChats = createAction(
-  '[Chat] Delete All Chats'
-);
-
-// --- SEARCH ACTIONS ---
-export const searchChats = createAction(
-  '[Chat] Search Chats',
-  props<{ query: string }>()
-);
-
-export const searchChatsSuccess = createAction(
-  '[Chat] Search Chats Success',
-  props<{ results: any[] }>()
-);
-
-export const searchChatsFailure = createAction(
-  '[Chat] Search Chats Failure',
-  props<{ error: string }>()
-);
-
-// --- UTILITY ACTIONS (STT/Vision/Translate) ---
-export const transcribeAudio = createAction(
-  '[Chat] Transcribe Audio',
-  props<{ file: File }>()
-);
-
-export const transcribeAudioSuccess = createAction(
-  '[Chat API] Transcribe Audio Success',
-  props<{ text: string }>()
-);
-
-export const transcribeAudioFailure = createAction(
-  '[Chat API] Transcribe Audio Failure',
-  props<{ error: string }>()
-);
-
-export const analyzeImage = createAction(
-  '[Chat] Analyze Image',
-  props<{ imageUrl: string; prompt?: string }>()
-);
-
-export const analyzeImageSuccess = createAction(
-  '[Chat API] Analyze Image Success',
-  props<{ imageUrl: string; result: string }>()
-);
-
-export const analyzeImageFailure = createAction(
-  '[Chat API] Analyze Image Failure',
-  props<{ error: string }>()
-);
-
-export const translateText = createAction(
-  '[Chat] Translate Text',
-  props<{ text: string; targetLanguage: string }>()
-);
-
-export const translateTextSuccess = createAction(
-  '[Chat API] Translate Text Success',
-  props<{ translated: string }>()
-);
-
-export const translateTextFailure = createAction(
-  '[Chat API] Translate Text Failure',
-  props<{ error: string }>()
-);
-
-export const shareChat = createAction(
-  '[Chat] Share Chat',
-  props<{ chatId: string}>()
-);
-
-export const shareChatSuccess = createAction(
-  '[Chat API] Share Chat Success',
-  props<{ shareUrl: string, shareId: string }>()
-);
-
-export const shareChatFailure = createAction(
-  '[Chat API] Share Chat Failure',
-  props<{ error: string }>()
-);
-
-export const loadSharedChat = createAction(
-  '[Chat] Load Shared Chat',
-  props<{ shareId: string }>()
-);
-
-export const loadSharedChatSuccess = createAction(
-  '[Chat] Load Shared Chat Success',
-  props<{ messages: ChatMessage[], title: string, createdAt: Date, shareId: string }>()
-);
-
-export const loadSharedChatFailure = createAction(
-  '[Chat] Load Shared Chat Failure',
-  props<{ error: string }>()
-);
-
-export const saveSharedConversation = createAction(
-  '[Chat] Save Shared Conversation', 
-  props<{ shareId: string }>()
-);
-
-export const saveSharedConversationSuccess = createAction(
-  '[Chat] Save Shared Conversation Success',
-  props<{ chatId: string }>()
-);
-
-export const saveSharedConversationFailure = createAction(
-  '[Chat] Save Shared Conversation Failure',
-  props<{ error: string }>()
-)
+    // Sharing Results
+    'Share Chat Success': props<{ shareUrl: string, shareId: string }>(),
+    'Share Chat Failure': props<{ error: string }>(),
+    'Load Shared Chat Success': props<{ messages: ChatMessage[], title: string, createdAt: Date, shareId: string }>(),
+    'Load Shared Chat Failure': props<{ error: string }>(),
+    'Save Shared Conversation Success': props<{ chatId: string }>(),
+    'Save Shared Conversation Failure': props<{ error: string }>()
+  }
+});

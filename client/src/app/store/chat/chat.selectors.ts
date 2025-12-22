@@ -1,78 +1,42 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ChatState } from './chat.state';
 
-export const selectChatState = createFeatureSelector<ChatState>('chat');
+const selectChatState = createFeatureSelector<ChatState>('chat'); 
 
-export const selectChatMessages = createSelector(
+// Private selectors (internal building blocks)
+const selectMessagesState = createSelector(selectChatState, (state) => state.messages);
+const selectAllChatsState = createSelector(selectChatState, (state) => state.chatList);
+const selectCurrentChatIdState = createSelector(selectChatState, (state) => state.currentChatId);
+
+// Exported Group
+export const ChatSelectors = {
   selectChatState,
-  (state) => state.messages
-);
+  
+  // Data
+  selectMessages: selectMessagesState,
+  selectAllChats: selectAllChatsState,
+  selectCurrentChatId: selectCurrentChatIdState,
+   
+  selectCurrentChat: createSelector(
+    selectAllChatsState,
+    selectCurrentChatIdState,
+    (chats, currentChatId) => chats.find(chat => chat._id === currentChatId)
+  ),
+  
+  selectChatTitle: createSelector(selectChatState, (state) => state.title),
+  selectStreamStatus: createSelector(selectChatState, (state) => state.streamStatus),
 
-export const selectAllChats = createSelector(
-  selectChatState,
-  (state) => state.chatList
-);
-
-export const selectIsLoading = createSelector(
-  selectChatState,
-  (state) => state.isLoading
-);
-
-export const selectIsStreaming = createSelector(
-  selectChatState,
-  (state) => state.isStreaming
-);
-
-// --- TIWARI JI: NEW SELECTORS ---
-export const selectSearchResults = createSelector(
-  selectChatState,
-  (state) => state.searchResults
-);
-
-export const selectIsSearching = createSelector(
-  selectChatState,
-  (state) => state.isSearching
-);
-
-export const selectChatError = createSelector(
-  selectChatState,
-  (state) => state.error
-);
-
-export const selectCurrentChatId = createSelector(
-  selectChatState,
-  (state) => state.currentChatId
-)
-
-export const selectCurrentChat = createSelector(
-  selectAllChats,
-  selectCurrentChatId,
-  (chats, currentChatId) => {
-    return chats.find(chat => chat._id === currentChatId);
-  }
-);
-
-export const selectShareUrl = createSelector(
-  selectChatState,
-  (state) => state.shareUrl
-);
-
-export const selectShareId = createSelector(
-  selectChatState,
-  (state) => state.shareId
-);
-
-export const selectIsSharing = createSelector(
-  selectChatState,
-  (state) => state.isSharing
-);
-
-export const selectChatTitle = createSelector(
-  selectChatState,
-  (state)=> state.title
-);
-
-export const selectStreamStatus = createSelector(
-  selectChatState,
-  (state) => state.streamStatus
-);
+  // UI Flags
+  selectIsLoading: createSelector(selectChatState, (state) => state.isLoading),
+  selectIsStreaming: createSelector(selectChatState, (state) => state.isStreaming),
+  selectChatError: createSelector(selectChatState, (state) => state.error),
+  
+  // Search
+  selectSearchResults: createSelector(selectChatState, (state) => state.searchResults),
+  selectIsSearching: createSelector(selectChatState, (state) => state.isSearching),
+  
+  // Share
+  selectShareUrl: createSelector(selectChatState, (state) => state.shareUrl),
+  selectShareId: createSelector(selectChatState, (state) => state.shareId),
+  selectIsSharing: createSelector(selectChatState, (state) => state.isSharing),
+};

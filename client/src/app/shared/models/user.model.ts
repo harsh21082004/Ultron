@@ -5,4 +5,8 @@ export interface User {
   email: string;
   profilePic: string,
   token: string;
+  preferences: {
+    theme: string;
+    language: string;
+  }
 }

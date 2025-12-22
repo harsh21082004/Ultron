@@ -2,24 +2,30 @@ import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatInputModule } from "@angular/material/input"; // CRITICAL IMPORT
+import { MatInputModule } from "@angular/material/input"; 
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Clipboard } from '@angular/cdk/clipboard';
+
+// Store Imports
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { AppState } from '../../../store';
-import { selectIsSharing, selectShareUrl } from '../../../store/chat/chat.selectors'; // Ensure path is correct
-import { Clipboard } from '@angular/cdk/clipboard';
+// UPDATED: Import Grouped Selectors
+import { ChatSelectors } from '../../../store/chat/chat.selectors';
+
+// Components
 import { LoadingSpinner } from '../loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-share-dialog',
-  standalone: true, // Assuming standalone
+  standalone: true,
   imports: [
     CommonModule,
     MatDialogModule,
     MatFormFieldModule,
+    MatInputModule,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
@@ -39,8 +45,9 @@ export class ShareDialog {
   isCopied = false;
 
   constructor() {
-    this.shareableLink$ = this.store.select(selectShareUrl);
-    this.isSharing$ = this.store.select(selectIsSharing);
+    // UPDATED: Use Selector Group
+    this.shareableLink$ = this.store.select(ChatSelectors.selectShareUrl);
+    this.isSharing$ = this.store.select(ChatSelectors.selectIsSharing);
   }
 
   copyLink(url: string) {

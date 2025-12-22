@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { signup, login, getUserDetails, socialLoginCallback } = require('../controllers/auth.controller');
+const { signup, login, getUserDetails, socialLoginCallback, updateProfile, getSharedChats, revokeShare, deleteAccount, updatePreferences  } = require('../controllers/auth.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const passport = require('passport');
 
@@ -31,5 +31,11 @@ router.get(
     passport.authenticate('github', { session: false, failureRedirect: '/login' }),
     socialLoginCallback
 );
+
+router.put('/profile', protect, updateProfile);
+router.put('/preferences', protect, updatePreferences);
+router.get('/shared', protect, getSharedChats);
+router.post('/revoke-share', protect, revokeShare);
+router.delete('/account', protect, deleteAccount);
 
 module.exports = router;

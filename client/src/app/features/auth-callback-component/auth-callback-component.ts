@@ -5,10 +5,9 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { firstValueFrom, filter, take, timer, forkJoin, race, of, map } from 'rxjs';
-
-import * as AuthActions from '../../store/auth/auth.actions';
 import { selectAuthUser } from '../../store/auth/auth.selectors';
 import { SnackbarService } from '../../core/services/snackbar.service';
+import { AuthActions } from '../../store/auth/auth.actions';
 
 @Component({
   selector: 'app-auth-callback-component',

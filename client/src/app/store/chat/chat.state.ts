@@ -1,11 +1,13 @@
+// chat.state.ts
+
+// --- 1. Content Interfaces ---
+
 export interface ContentBlock {
-  // UPDATED: Added 'image_url' to the valid types
   type: 'text' | 'code' | 'table' | 'image' | 'image_url' | 'video';
   value: string;
-  language?: string;
+  language?: string; // Optional, primarily for 'code' blocks
 }
 
-// NEW: Interface for Source Citations
 export interface Source {
   title: string;
   uri: string;
@@ -17,16 +19,27 @@ export interface ChatMessage {
   _id: string;
   sender: 'user' | 'ai';
   content: ContentBlock[];
-  // Made optional because backend responses might not always carry it immediately
-  timestamp?: Date; 
+  
+  // Backend often sends dates as ISO strings, so we allow both
+  timestamp?: Date | string; 
+  
+  // Streaming & AI Meta-data
   isStreaming?: boolean;
-  
-  // NEW: Persist reasoning steps and status in the message itself
-  status?: string; 
-  reasoning?: string[]; 
-  
-  // NEW: Array of sources used for this message
-  sources?: Source[];
+  status?: string;         // e.g., "Thinking", "Searching"
+  reasoning?: string[];    // Chain of thought logs
+  sources?: Source[];      // RAG Sources
+}
+
+// --- 2. List & Sidebar Interfaces ---
+
+// Describes a chat item in the sidebar list (lighter than full history)
+export interface ChatSession {
+  _id: string;
+  title: string;
+  userId: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  lastMessage?: string;
 }
 
 // Structured Status for Real-time Thinking UI
@@ -35,52 +48,60 @@ export interface StreamStatus {
   steps: string[];
 }
 
+// --- 3. Main State ---
+
 export interface ChatState {
-  chatId: string | null;
-  title?: string | null;
-  // Using currentChatId in reducer, mapping to chatId here for consistency
-  currentChatId?: string | null; 
-  shareUrl?: string | null;
-  shareId?: string | null;
-  messages: ChatMessage[]; 
+  // Navigation
+  currentChatId: string | null; // The Single Source of Truth for the active chat
+  title?: string | null;        // Title of the currently active chat
+  
+  // Active Conversation Data
+  messages: ChatMessage[];
   isLoading: boolean;
   isStreaming: boolean;
   streamStatus: StreamStatus | null;
   error: string | null;
+  
+  // Sidebar / Management State
+  chatList: ChatSession[];      // Typed array
+  isSearching: boolean;
+  searchResults: ChatSession[]; // Typed array
+  
+  // Sharing Feature
+  shareUrl?: string | null;
+  shareId?: string | null;
   isSharing?: boolean;
 
-  // Sidebar / Management State
-  // FIXED: Removed '?' to ensure it is always typed as an array (even if empty)
-  chatList: any[]; 
-  
-  // Feature flags/states (Added these to match your reducer logic)
-  isSearching?: boolean;
-  searchResults?: any[];
+  // Tool / Utility States
   isTranscribing?: boolean;
   lastTranscription?: string;
   isAnalyzingImage?: boolean;
   lastVisionResult?: string;
   isTranslating?: boolean;
   lastTranslation?: string;
-
 }
 
+// --- 4. Initial State ---
+
 export const initialChatState: ChatState = {
-  chatId: null,
-  title: null,
   currentChatId: null,
+  title: null,
+  
   messages: [],
   isLoading: false,
   isStreaming: false,
   streamStatus: null,
   error: null,
-  chatList: [], // Initialized as empty array
+  
+  chatList: [],
   isSearching: false,
   searchResults: [],
-  isTranscribing: false,
-  isAnalyzingImage: false,
-  isTranslating: false,
+  
   shareId: null,
   shareUrl: null,
-  isSharing: false
+  isSharing: false,
+  
+  isTranscribing: false,
+  isAnalyzingImage: false,
+  isTranslating: false
 };

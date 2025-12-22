@@ -190,6 +190,24 @@ pre,
     background: var(--mat-menu-container-color);
 }
 
+.code-header{
+    position: sticky;
+    top: -22px;
+    z-index: 1;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.code-wrapper {
+    position: relative;
+}
+
+.code-body{
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+
 :host ::ng-deep code.dark-theme {
     background: var(--mat-menu-container-color) !important;
     color: #abb2bf;

@@ -1,18 +1,35 @@
 import { inject, Injectable } from '@angular/core';
+import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
-import { catchError, map, switchMap, withLatestFrom, endWith, filter, debounceTime, takeUntil, tap } from 'rxjs/operators';
 import { Store } from '@ngrx/store';
-import * as ChatActions from './chat.actions';
+import { of } from 'rxjs';
+import {
+  catchError,
+  map,
+  switchMap,
+  withLatestFrom,
+  endWith,
+  filter,
+  debounceTime,
+  takeUntil,
+  tap
+} from 'rxjs/operators';
+
+// App State & Core Services
 import { AppState } from '..';
-import { selectChatMessages, selectCurrentChat } from './chat.selectors';
-import { selectAuthUser } from '../auth/auth.selectors';
 import { ChatDbService } from '../../core/services/chat-db.service';
+import { ChatApiService } from '../../core/services/chat-api.services';
 import { AudioApiService } from '../../core/services/audio-api.service';
 import { VisionApiService } from '../../core/services/vision-api.service';
 import { TranslateApiService } from '../../core/services/translate-api.service';
-import { ChatApiService } from '../../core/services/chat-api.services';
-import { Router } from '@angular/router';
+
+// UPDATED: Auth Selectors
+import { selectAuthUser } from '../auth/auth.selectors';
+
+// UPDATED: Chat Grouped Actions & Selectors
+import { ChatPageActions, ChatApiActions } from './chat.actions';
+import { ChatSelectors } from './chat.selectors';
+import { AuthActions } from '../auth/auth.actions';
 
 @Injectable()
 export class ChatEffects {
@@ -25,121 +42,172 @@ export class ChatEffects {
   private translateApi = inject(TranslateApiService);
   private router = inject(Router);
 
+  // 1. Load History (Triggered by entering page)
   loadHistory$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.loadChatHistory),
+      ofType(ChatPageActions.enterChat),
       switchMap(action =>
         this.chatDbService.getChatHistory(action.chatId).pipe(
-          map(messages => ChatActions.loadChatHistorySuccess({ chatId: action.chatId, messages })),
-          catchError(error => of(ChatActions.loadChatHistoryFailure({ chatId: action.chatId, error: error.message })))
+          map(messages => ChatApiActions.loadChatHistorySuccess({ chatId: action.chatId, messages })),
+          catchError(error => of(ChatApiActions.loadChatHistoryFailure({ chatId: action.chatId, error: error.message })))
         )
       )
     );
   });
 
-  // --- UPDATED: Handles Status, Logs (Thoughts), Sources, and Text events ---
+  // 2. Send Message & Handle Stream (WITH LANGUAGE SUPPORT)
   sendMessage$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.sendMessage),
-      switchMap(action =>
-        this.chatApiService.sendMessageStream(action.message, action.chatId, action.image).pipe(
+      ofType(ChatPageActions.sendMessage),
+      withLatestFrom(this.store.select(selectAuthUser)), // GRAB USER
+      switchMap(([action, user]) => {
+
+        // Extract language or default to English
+        // NOTE: Ensure your User interface has 'preferences.language' or adjust path
+        const language = user?.preferences?.language || 'English';
+
+        // PREPARE CONTEXT
+        // We strip the token to send only relevant info to Python
+        const userContext = user ? {
+            name: user.name,
+            email: user.email,
+            preferences: user.preferences
+        } : null;
+
+        console.log('Sending message with language:', language);
+
+        return this.chatApiService.sendMessageStream(action.message, action.chatId, action.image, language, userContext).pipe(
           map(event => {
-            // 1. STATUS UPDATE (e.g. "Thinking...")
-            if (event.type === 'status') {
-              return ChatActions.updateStreamStatus({ status: event.value });
-            } 
-            // 2. LOG / REASONING (e.g. "Identifying Intent...")
-            else if (event.type === 'log') {
-              return ChatActions.addStreamLog({ log: event.value });
-            } 
-            // 3. SOURCES (JSON string of sources) -> NEW
-            else if (event.type === 'sources') {
-              console.log(event)
+            if (event.type === 'update_pref') {
               try {
-                // The value is expected to be a JSON string like '[{"title": "...", "uri": "..."}]'
-                const sources = JSON.parse(event.value);
-                return ChatActions.updateStreamSources({ sources });
+                // Parse: { "language": "Hindi" } or { "theme": "dark" }
+                const updateData = JSON.parse(event.value);
+                console.log('[Ultron] Auto-updating preferences:', updateData);
+
+                // 1. Separate Root Props (name) from Preferences (language, theme)
+                const rootUpdates: any = {};
+                const prefUpdates: any = {};
+
+                Object.keys(updateData).forEach(key => {
+                  if (key === 'name' || key === 'profilePic') {
+                    rootUpdates[key] = updateData[key];
+                  } else {
+                    // Assume everything else is a preference
+                    prefUpdates[key] = updateData[key];
+                  }
+                });
+
+                // 2. Dispatch Update Action
+                // Note: We merge with existing user prefs handled by the backend/reducer logic usually,
+                // but AuthActions.updateUserProfile expects a partial User object.
+                const payload: any = { ...rootUpdates };
+                if (Object.keys(prefUpdates).length > 0) {
+                  payload.preferences = prefUpdates;
+                  // Note: Your component uses logic to merge preferences. 
+                  // If your backend 'updateProfile' replaces the whole pref object, 
+                  // you might need to pass { preferences: { ...user.preferences, ...prefUpdates } }
+                  // But usually partial updates are better handled on backend.
+                  // For now, let's assume backend/reducer merges generic keys.
+                }
+
+                return AuthActions.updateUserProfile({ data: payload });
+
               } catch (e) {
-                console.warn('Failed to parse sources JSON:', event.value);
-                // Fallback to logging it if parsing fails
-                return ChatActions.addStreamLog({ log: 'Received sources but failed to parse.' });
+                console.error("Failed to parse update preference payload", e);
+                return ChatApiActions.addStreamLog({ log: 'Failed to update settings.' });
               }
             }
-            // 4. TEXT CHUNK (The actual answer) 
+            // A. STATUS UPDATE (e.g. "Thinking...")
+            if (event.type === 'status') {
+              return ChatApiActions.updateStreamStatus({ status: event.value });
+            }
+            // B. LOG / REASONING (e.g. "Identifying Intent...")
+            else if (event.type === 'log') {
+              return ChatApiActions.addStreamLog({ log: event.value });
+            }
+            // C. SOURCES (JSON string)
+            else if (event.type === 'sources') {
+              try {
+                const sources = JSON.parse(event.value);
+                return ChatApiActions.updateStreamSources({ sources });
+              } catch (e) {
+                console.warn('Failed to parse sources JSON:', event.value);
+                return ChatApiActions.addStreamLog({ log: 'Received sources but failed to parse.' });
+              }
+            }
+            // D. TEXT CHUNK (The answer)
             else {
-              return ChatActions.receiveStreamChunk({ chunk: event.value });
+              return ChatApiActions.receiveStreamChunk({ chunk: event.value });
             }
           }),
-          tap((event)=> {
-            console.log(event)
-          }),
-          takeUntil(this.actions$.pipe(ofType(ChatActions.stopStream))),
-          endWith(ChatActions.streamComplete({ chatId: action.chatId })),
-          catchError(error => of(ChatActions.streamFailure({ error: error.message })))
-        )
-      )
+          takeUntil(this.actions$.pipe(ofType(ChatPageActions.stopStream))),
+          endWith(ChatApiActions.streamComplete({ chatId: action.chatId })),
+          catchError(error => of(ChatApiActions.streamFailure({ error: error.message })))
+        );
+      })
     );
   });
 
+  // 3. Signal that Stream Started (UI Spinner logic)
   startStream$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.sendMessage),
-      map(() => ChatActions.streamStarted())
-    )
+      ofType(ChatPageActions.sendMessage),
+      map(() => ChatApiActions.streamStarted())
+    );
   });
 
+  // 4. Hydrate AI Memory (Context) after history load
   hydrateAiMemory$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.loadChatHistorySuccess),
+      ofType(ChatApiActions.loadChatHistorySuccess),
       filter(action => !!action.chatId && action.messages.length > 0),
       switchMap(action =>
         this.chatApiService.hydrateHistory(action.chatId, action.messages).pipe(
-          map(() => ChatActions.hydrateHistorySuccess()),
-          catchError(error => of(ChatActions.hydrateHistoryFailure({ error: error.message })))
+          map(() => ChatApiActions.hydrateHistorySuccess()),
+          catchError(error => of(ChatApiActions.hydrateHistoryFailure({ error: error.message })))
         )
       )
     );
   });
 
+  // 5. Save Chat & Generate Title on Completion
   saveOnStreamComplete$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.streamComplete),
+      ofType(ChatApiActions.streamComplete),
       withLatestFrom(
-        this.store.select(selectChatMessages),
-        this.store.select(selectCurrentChat)
+        this.store.select(ChatSelectors.selectMessages),
+        this.store.select(ChatSelectors.selectCurrentChat)
       ),
       switchMap(([action, messages, currentChat]) => {
         const chatId = action.chatId;
 
         if (!chatId || messages.length < 2) {
-          return of(ChatActions.saveChatHistoryFailure({ error: 'Missing data to save chat.' }));
+          return of(ChatApiActions.saveChatHistoryFailure({ error: 'Missing data to save chat.' }));
         }
 
-        // --- NEW LOGIC: Prevent Title Regeneration ---
-        // Only generate title if:
-        // 1. It is the very first exchange (2 messages: 1 User, 1 AI)
-        // 2. AND the current title is "New Chat" (or missing)
+        // Logic: Only generate title on first exchange if title is default
         const isFirstExchange = messages.length === 2;
         const hasCustomTitle = currentChat?.title && currentChat.title !== 'New Chat';
-        
-        // If it's a long conversation or already has a custom title, SKIP generation.
+
+        // If existing conversation, just save
         if (!isFirstExchange || hasCustomTitle) {
-           const existingTitle = currentChat?.title || 'New Chat';
-           return this.chatDbService.saveChat(chatId, messages, existingTitle).pipe(
-              map(() => ChatActions.saveChatHistorySuccess({ chatId, newTitle: existingTitle })),
-              catchError(error => of(ChatActions.saveChatHistoryFailure({ error: error.message })))
-           );
+          const existingTitle = currentChat?.title || 'New Chat';
+          return this.chatDbService.saveChat(chatId, messages, existingTitle).pipe(
+            map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: existingTitle })),
+            catchError(error => of(ChatApiActions.saveChatHistoryFailure({ error: error.message })))
+          );
         }
 
-        // Otherwise, generate the title (First run)
+        // Generate Title (First Run)
         return this.chatApiService.generateTitle(messages).pipe(
           switchMap(titleResponse => {
             const aiTitle = titleResponse.title || 'New Chat';
             return this.chatDbService.saveChat(chatId, messages, aiTitle).pipe(
-              map(() => ChatActions.saveChatHistorySuccess({ chatId, newTitle: aiTitle })),
-              catchError(error => of(ChatActions.saveChatHistoryFailure({ error: error.message })))
+              map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: aiTitle })),
+              catchError(error => of(ChatApiActions.saveChatHistoryFailure({ error: error.message })))
             );
           }),
+          // Fallback if Title Gen fails: Save with default
           catchError(titleError => {
             console.error("Failed to generate AI title, saving with default.", titleError);
             const firstUserMessage = messages.find(m => m.sender === 'user');
@@ -147,8 +215,8 @@ export class ChatEffects {
             const defaultTitle = (firstTextContent?.value as string)?.substring(0, 50) || 'New Chat';
 
             return this.chatDbService.saveChat(chatId, messages, defaultTitle).pipe(
-              map(() => ChatActions.saveChatHistorySuccess({ chatId, newTitle: defaultTitle })),
-              catchError(dbError => of(ChatActions.saveChatHistoryFailure({ error: dbError.message })))
+              map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: defaultTitle })),
+              catchError(dbError => of(ChatApiActions.saveChatHistoryFailure({ error: dbError.message })))
             );
           })
         );
@@ -156,129 +224,143 @@ export class ChatEffects {
     );
   });
 
+  // 6. Sidebar Chat List
   getAllChats$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.getAllChats),
+      ofType(ChatPageActions.getAllChats),
       switchMap(action =>
         this.chatDbService.getAllChats(action.userId).pipe(
-          map(chats => ChatActions.getAllChatsSuccess({ chats })),
-          catchError(error => of(ChatActions.getAllChatsFailure({ error: error.message })))
+          map(chats => ChatApiActions.getAllChatsSuccess({ chats })),
+          catchError(error => of(ChatApiActions.getAllChatsFailure({ error: error.message })))
         )
       ))
   });
 
+  // 7. Refresh List after a Save (Title update or new chat)
   refetchChatsAfterSave$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.saveChatHistorySuccess),
+      // UPDATED: Listen to BOTH 'Save History' AND 'Save Shared Conversation'
+      ofType(
+        ChatApiActions.saveChatHistorySuccess,
+        ChatApiActions.saveSharedConversationSuccess
+      ),
       withLatestFrom(this.store.select(selectAuthUser)),
       filter(([action, user]) => !!user),
-      map(([action, user]) => ChatActions.getAllChats({ userId: user!._id }))
+      map(([action, user]) => ChatPageActions.getAllChats({ userId: user!._id }))
     );
   });
 
+  // 8. Delete All
   deleteAllChats$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.deleteAllChats),
+      ofType(ChatPageActions.deleteAllChats),
       withLatestFrom(this.store.select(selectAuthUser)),
       filter(([action, user]) => !!user),
       switchMap(([action, user]) => {
         return this.chatDbService.deleteAllChats(user!._id).pipe(
-          map(() => ChatActions.getAllChatsSuccess({ chats: [] })),
-          catchError(error => of(ChatActions.getAllChatsFailure({ error: error.message })))
+          map(() => ChatApiActions.getAllChatsSuccess({ chats: [] })),
+          catchError(error => of(ChatApiActions.getAllChatsFailure({ error: error.message })))
         )
       })
     )
   });
 
+  // 9. Search
   searchChats$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.searchChats),
+      ofType(ChatPageActions.searchChats),
       debounceTime(300),
-      switchMap(action => 
+      switchMap(action =>
         this.chatDbService.searchChats(action.query).pipe(
-          map(results => ChatActions.searchChatsSuccess({ results })),
-          catchError(error => of(ChatActions.searchChatsFailure({ error: error.message })))
+          map(results => ChatApiActions.searchChatsSuccess({ results })),
+          catchError(error => of(ChatApiActions.searchChatsFailure({ error: error.message })))
         )
       )
     );
   });
 
+  // 10. Tools: Audio Transcription
   transcribeAudio$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.transcribeAudio),
+      ofType(ChatPageActions.transcribeAudio),
       switchMap(action =>
         this.audioApi.transcribe(action.file).pipe(
-          map(res => ChatActions.transcribeAudioSuccess({ text: res.text })),
-          catchError(err => of(ChatActions.transcribeAudioFailure({ error: err.message ?? 'Transcription failed' })))
+          map(res => ChatApiActions.transcribeAudioSuccess({ text: res.text })),
+          catchError(err => of(ChatApiActions.transcribeAudioFailure({ error: err.message ?? 'Transcription failed' })))
         )
       )
     );
   });
 
+  // 11. Tools: Image Analysis
   analyzeImage$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.analyzeImage),
+      ofType(ChatPageActions.analyzeImage),
       switchMap(action =>
         this.visionApi.analyzeImage(action.imageUrl, action.prompt).pipe(
-          map(res => ChatActions.analyzeImageSuccess({ imageUrl: action.imageUrl, result: res.result })),
-          catchError(err => of(ChatActions.analyzeImageFailure({ error: err.message ?? 'Vision analysis failed' })))
+          map(res => ChatApiActions.analyzeImageSuccess({ imageUrl: action.imageUrl, result: res.result })),
+          catchError(err => of(ChatApiActions.analyzeImageFailure({ error: err.message ?? 'Vision analysis failed' })))
         )
       )
     );
   });
 
+  // 12. Tools: Translation
   translateText$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.translateText),
+      ofType(ChatPageActions.translateText),
       switchMap(action =>
         this.translateApi.translate(action.text, action.targetLanguage).pipe(
-          map(res => ChatActions.translateTextSuccess({ translated: res.translated_text })),
-          catchError(err => of(ChatActions.translateTextFailure({ error: err.message ?? 'Translation failed' })))
+          map(res => ChatApiActions.translateTextSuccess({ translated: res.translated_text })),
+          catchError(err => of(ChatApiActions.translateTextFailure({ error: err.message ?? 'Translation failed' })))
         )
       )
     );
   });
 
+  // 13. Sharing: Create Link
   shareChat$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.shareChat),
-      switchMap(action => 
+      ofType(ChatPageActions.shareChat),
+      switchMap(action =>
         this.chatDbService.createShareLink(action.chatId).pipe(
           tap(res => console.log("Share link created:", res)),
-          map(res => ChatActions.shareChatSuccess({ shareId: res.shareId, shareUrl: res.shareUrl })),
-          catchError(err => of(ChatActions.shareChatFailure({ error: err.message ?? 'Share link creation failed' })))
+          map(res => ChatApiActions.shareChatSuccess({ shareId: res.shareId, shareUrl: res.shareUrl })),
+          catchError(err => of(ChatApiActions.shareChatFailure({ error: err.message ?? 'Share link creation failed' })))
         )
       )
     )
   })
 
+  // 14. Sharing: Load Shared Chat (Preview)
   loadSharedChat$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.loadSharedChat),
-      switchMap(action => 
+      ofType(ChatPageActions.loadSharedChat),
+      switchMap(action =>
         this.chatDbService.getSharedPreview(action.shareId).pipe(
           tap(res => console.log("Shared chat preview loaded:", res)),
-          map(res => ChatActions.loadSharedChatSuccess({ title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId })),
-          catchError(err => of(ChatActions.loadSharedChatFailure({ error: err.message ?? 'Importing shared chat failed' })))
+          map(res => ChatApiActions.loadSharedChatSuccess({ title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId })),
+          catchError(err => of(ChatApiActions.loadSharedChatFailure({ error: err.message ?? 'Importing shared chat failed' })))
         )
       )
     )
   })
 
+  // 15. Sharing: Import/Save to Account
   saveSharedConversation$ = createEffect(() => {
     return this.actions$.pipe(
-      ofType(ChatActions.saveSharedConversation), 
+      ofType(ChatPageActions.saveSharedConversation),
       switchMap(action => {
         if (!action.shareId) {
-          return of(ChatActions.saveSharedConversationFailure({ error: 'Share ID is required' }));
+          return of(ChatApiActions.saveSharedConversationFailure({ error: 'Share ID is required' }));
         }
         return this.chatDbService.importSharedChat(action.shareId).pipe(
           tap(res => {
-             console.log("Shared chat imported, new chat ID:", res.chatId);
-             this.router.navigate(['/chat', res.chatId]);
+            console.log("Shared chat imported, new chat ID:", res.chatId);
+            this.router.navigate(['/chat', res.chatId]);
           }),
-          map(res => ChatActions.saveSharedConversationSuccess({ chatId: res.chatId })),
-          catchError(err => of(ChatActions.saveSharedConversationFailure({ error: err.message ?? 'Importing shared chat failed' })))
+          map(res => ChatApiActions.saveSharedConversationSuccess({ chatId: res.chatId })),
+          catchError(err => of(ChatApiActions.saveSharedConversationFailure({ error: err.message ?? 'Importing shared chat failed' })))
         );
       })
     )

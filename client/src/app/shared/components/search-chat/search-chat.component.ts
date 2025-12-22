@@ -1,18 +1,24 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+// Material Imports
 import { MatNavList, MatListItem, MatListItemTitle, MatListItemLine } from '@angular/material/list';
 import { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { ReactiveFormsModule, FormControl } from '@angular/forms';
+
+// Store Imports
 import { Store } from '@ngrx/store';
 import { AppState } from '../../../store';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { Observable } from 'rxjs';
-import * as ChatActions from '../../../store/chat/chat.actions';
-import { selectIsSearching, selectSearchResults } from '../../../store/chat/chat.selectors';
-import { Router } from '@angular/router';
+// UPDATED: Import Groups & Types
+import { ChatPageActions, ChatApiActions } from '../../../store/chat/chat.actions';
+import { ChatSelectors } from '../../../store/chat/chat.selectors';
+import { ChatSession } from '../../../store/chat/chat.state';
 
 @Component({
   selector: 'app-search-chat-component',
@@ -38,9 +44,9 @@ export class SearchChat implements OnInit {
 
   searchControl = new FormControl('');
   
-  // Selectors from NGRX
-  searchResults$: Observable<any[] | undefined> = this.store.select(selectSearchResults);
-  isSearching$: Observable<boolean | undefined> = this.store.select(selectIsSearching);
+  // UPDATED: Selectors using the Group & Strict Typing
+  searchResults$: Observable<ChatSession[] | undefined> = this.store.select(ChatSelectors.selectSearchResults);
+  isSearching$: Observable<boolean | undefined> = this.store.select(ChatSelectors.selectIsSearching);
 
   ngOnInit() {
     // Listen to input changes
@@ -49,10 +55,13 @@ export class SearchChat implements OnInit {
       distinctUntilChanged()    // Ignore if value hasn't changed
     ).subscribe(query => {
       if (query && query.trim().length > 0) {
-        this.store.dispatch(ChatActions.searchChats({ query }));
+        // UPDATED: Dispatch Page Action
+        this.store.dispatch(ChatPageActions.searchChats({ query }));
+        this.searchResults$.subscribe(results => { console.log('Search Results:', results); });
       } else {
-        // Optional: clear results if query is empty
-        this.store.dispatch(ChatActions.searchChatsSuccess({ results: [] }));
+        // Clear results if query is empty
+        // We reuse the API Success action to reset the list to empty locally
+        this.store.dispatch(ChatApiActions.searchChatsSuccess({ results: [] }));
       }
     });
   }
@@ -60,6 +69,10 @@ export class SearchChat implements OnInit {
   openChat(chatId: string, event: MouseEvent): void {
     event.preventDefault();
     this._bottomSheetRef.dismiss();
+    
+    // Dispatch Enter Chat logic via Page Action (Optional, or let the Router/Component handle it)
+    // this.store.dispatch(ChatPageActions.enterChat({ chatId })); 
+    
     this.router.navigate(['/chat', chatId]);
   }
 

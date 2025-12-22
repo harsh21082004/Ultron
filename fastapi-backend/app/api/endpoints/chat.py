@@ -115,7 +115,7 @@ async def handle_chat_stream(
 
             # Stream response from service
             async for chunk in chat_service.stream_groq_message(
-                request.message, request.chatId, final_image
+                request.message, request.chatId, final_image, request.language, request.user_context
             ):
                 yield chunk
         except Exception as e:

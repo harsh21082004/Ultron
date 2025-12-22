@@ -1,25 +1,35 @@
-import { Component, computed, HostListener, inject } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Import CommonModule
+import { Component, computed, HostListener, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { Observable, firstValueFrom, take } from 'rxjs';
+
+// Material Imports
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatMenuModule } from "@angular/material/menu";
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar'; // 1. Import the progress bar module
-import { MatIconModule } from '@angular/material/icon'; // Import MatIconModule
-import { Observable, Subscription, withLatestFrom } from 'rxjs';
-import { User } from '../../models/user.model';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+
+// Store Imports
 import { Store } from '@ngrx/store';
 import { AppState } from '../../../store';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { User } from '../../models/user.model';
+
+// Selectors & Actions (The New Groups)
+import { selectAuthUser, selectAuthLoading } from '../../../store/auth/auth.selectors';
+import { ChatPageActions } from '../../../store/chat/chat.actions';
+import { ChatSelectors } from '../../../store/chat/chat.selectors';
+import { ChatSession } from '../../../store/chat/chat.state'; // Updated Type
+
+// Services & Components
 import { LoadingService } from '../../../core/services/loading.service';
 import { ThemeService } from '../../../core/services/theme.services';
-import { PinkButtonComponent } from "../pink-button/pink-button.component";
 import { DrawerService } from '../../../core/services/drawer.service';
-import * as AuthActions from '../../../store/auth/auth.actions';
-import * as ChatActions from '../../../store/chat/chat.actions';
-import { selectCurrentChat, selectCurrentChatId, selectChatTitle, selectShareId } from '../../../store/chat/chat.selectors';
-import { MatDialog } from '@angular/material/dialog';
+import { PinkButtonComponent } from "../pink-button/pink-button.component";
 import { ShareDialog } from '../share-dialog/share-dialog';
-
+import { ConfirmationDialog } from '../confirmation-dialog/confirmation-dialog';
+import { AuthActions } from '../../../store/auth/auth.actions';
 
 @Component({
   selector: 'app-header-component',
@@ -29,116 +39,123 @@ import { ShareDialog } from '../share-dialog/share-dialog';
     MatSlideToggleModule,
     MatMenuModule,
     MatButtonModule,
-    MatProgressBarModule, // 2. Add the module to the imports array
+    MatProgressBarModule,
     MatIconModule,
     RouterLink,
     PinkButtonComponent,
   ],
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss'],
-  
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
+  // Services
+  private store = inject(Store<AppState>);
+  private drawerService = inject(DrawerService);
+  private dialog = inject(MatDialog);
+  private loadingService = inject(LoadingService);
+  public themeService = inject(ThemeService); // Public for template access
+
+  // State Observables
+  user$: Observable<User | null>;
+  loading$: Observable<boolean>;
+  currentChat$: Observable<ChatSession | undefined>; // Updated type from 'any'
+  title$: Observable<string | null | undefined>;
+  shareId$: Observable<string | null | undefined>;
+
+  // UI State
   light_mode = 'light_mode';
   dark_mode = 'bedtime';
   isMobileView = false;
+  isSharedChatView = false; // This can be derived from shareId$ existence
 
-  user$: Observable<User | null>;
-  loading$: Observable<boolean>;
-  currentChat$: Observable<any | null>;
-
-  private loadingService = inject(LoadingService);
+  // Global Loading Spinner (Service-based)
   isLoading = this.loadingService.isLoading;
 
-  private route = inject(ActivatedRoute);
-  private routeSub!: Subscription;
-  public isSharedChatView = false;
-  public title$: Observable<string | null | undefined>;
-  public shareId$: Observable<string | null | undefined>;
+  // Computed Signal for Theme
+  isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
 
+  constructor() {
+    // Initialize Observables
+    this.user$ = this.store.select(selectAuthUser);
+    this.loading$ = this.store.select(selectAuthLoading); // Used proper selector
 
-  shareDialog = inject(MatDialog);
+    // Use new ChatSelectors Group
+    this.currentChat$ = this.store.select(ChatSelectors.selectCurrentChat);
+    this.title$ = this.store.select(ChatSelectors.selectChatTitle);
+    this.shareId$ = this.store.select(ChatSelectors.selectShareId);
 
-  onMobileMenuToggle() {
-    // if SidebarComponent is child, call an @ViewChild or use a shared service / store
-    this.drawer.toggle();
+    // Initial check
+    this.updateIsMobileView();
   }
 
-  handleShare(chatId: string): void {
-    this.shareDialog.open(ShareDialog , {
-      panelClass: 'share-dialog',
-      width: '600px',
-      data: { chatId }
-    })
-    this.store.dispatch(ChatActions.shareChat({ chatId }));
-  }
+  ngOnInit(): void {
+    // Note: I removed the Route Subscription here. 
+    // The ChatComponent (Page) is responsible for reading the URL 
+    // and dispatching 'enterChat' or 'loadSharedChat'.
+    // The Header simply reflects the resulting Store state.
 
-  handleLogout(){
-    this.store.dispatch(AuthActions.logout());
-  }
-
-  handleSaveConversation(): void {
-    // We subscribe once to get the current value, then dispatch
-    // The previous implementation had a lingering subscription in the method body which is bad practice
-    let sub = this.shareId$.subscribe(shareId => { 
-      if (shareId) {
-        this.store.dispatch(ChatActions.saveSharedConversation({ shareId }));
-      }
+    // Subscribe to shareId solely to toggle the view flag
+    this.shareId$.subscribe(id => {
+      this.isSharedChatView = !!id;
     });
-    // Unsubscribe immediately as we only needed the value once for the action
-    setTimeout(() => sub.unsubscribe(), 0); 
   }
 
   @HostListener('window:resize')
   onResize() {
-    this.updateIsMobileView();        // update on any resize (including DevTools device toggle)
+    this.updateIsMobileView();
   }
 
   private updateIsMobileView() {
     this.isMobileView = window.innerWidth <= 840;
   }
 
-  ngOnInit(): void {
-      this.routeSub = this.route.paramMap.pipe(
-        withLatestFrom(this.store.select(selectCurrentChatId))
-      ).subscribe(([params, currentLoadedChatId]) => {
-        const urlChatId = params.get('id');
-        const shareId = params.get('shareId'); 
-  
-        // 1. Shared Chat Route (High Priority)
-        if (shareId) {
-          this.isSharedChatView = true;
-          // Dispatch specific action to load shared chat content
-          this.store.dispatch(ChatActions.loadSharedChat({ shareId }));
-        } 
-        // 2. Normal Chat Route (Loading existing history)
-        else if (urlChatId) {
-          this.isSharedChatView = false;
-          // Only load if it's different from what's currently in memory
-          if (urlChatId !== currentLoadedChatId) {
-            this.store.dispatch(ChatActions.loadChatHistory({ chatId: urlChatId }));
-          }
-        } 
-        // 3. New Chat / Root
-        else {
-          this.isSharedChatView = false;
-          // FIX: Always clear the chat when hitting the root route. 
-          // This handles cases where we come from a Shared Chat (where currentLoadedChatId might be null or different)
-          // and ensures the view is reset to empty.
-          this.store.dispatch(ChatActions.clearActiveChat());
-        }
-      });
-    }
-
-  // Inject the service to use it in the template
-  constructor(public themeService: ThemeService, private store: Store<AppState>, private drawer: DrawerService) {
-    this.user$ = this.store.select(state => state.auth.user);
-    this.loading$ = this.store.select(state => state.auth.loading);
-    this.currentChat$ = this.store.select(selectCurrentChat);
-    this.title$ = this.store.select(selectChatTitle);
-    this.shareId$ = this.store.select(selectShareId);
-    this.isMobileView = window.innerWidth <= 840;
+  onMobileMenuToggle() {
+    this.drawerService.toggle();
   }
-  // A computed signal to easily check if the current mode is dark
-  isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
+
+  handleLogout() {
+    this.store.dispatch(AuthActions.logout());
+  }
+
+  handleShare(chatId: string): void {
+    // 1. Open Dialog & Capture Ref
+    const dialogRef = this.dialog.open(ShareDialog, {
+      panelClass: 'share-dialog',
+      width: '600px',
+      data: { chatId }
+    });
+
+    // 2. Dispatch Action to Generate Link
+    this.store.dispatch(ChatPageActions.shareChat({ chatId }));
+
+    // 3. Reset State on Close
+    dialogRef.afterClosed().subscribe(() => {
+      this.store.dispatch(ChatPageActions.clearShareState());
+    });
+  }
+
+  handleSaveAsConversation(): void {
+    const dialogRef = this.dialog.open(ConfirmationDialog, {
+      panelClass: 'save-dialog',
+      width: '400px',
+      // You can pass data here if you want dynamic text in the dialog
+      data: { title: 'Import Chat', message: 'Do you want to save this conversation?' } 
+    });
+
+    // FIX: Subscribe to the result
+    dialogRef.afterClosed().subscribe(result => {
+      // If the user clicked the button with [mat-dialog-close]="true"
+      if (result === true) {
+        this.handleSaveConversation();
+      }
+    });
+  }
+
+  async handleSaveConversation(): Promise<void> {
+    const shareId = await firstValueFrom(this.shareId$.pipe(take(1)));
+
+    if (shareId) {
+      this.store.dispatch(ChatPageActions.saveSharedConversation({ shareId }));
+    }
+  }
 }

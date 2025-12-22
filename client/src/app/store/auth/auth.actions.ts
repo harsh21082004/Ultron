@@ -1,71 +1,53 @@
-import { createAction, props } from '@ngrx/store';
+import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { User } from '../../shared/models/user.model';
 
-// --- OAUTH ACTIONS ---
-export const loginWithGoogle = createAction('[Auth] Login with Google');
-export const loginWithGitHub = createAction('[Auth] Login with GitHub');
+export const AuthActions = createActionGroup({
+  source: 'Auth Page',
+  events: {
+    // Session
+    'Init Session': emptyProps(),
 
-// --- SESSION INITIALIZATION ---
-export const initSession = createAction('[Auth] Init Session');
+    // Login
+    'Login': props<{ email: string; password: string }>(),
+    'Login With Google': emptyProps(),
+    'Login With GitHub': emptyProps(),
 
-export const initSessionSuccess = createAction(
-  '[Auth] Init Session Success',
-  props<{ user: User }>()
-);
+    // Signup
+    'Signup': props<{ name: string; email: string; password: string }>(),
 
-export const initSessionFailure = createAction('[Auth] Init Session Failure');
+    // Logout
+    'Logout': emptyProps(),
 
+    // Profile
+    'Update User Profile': props<{ data: Partial<User> }>(),
+    'Update User Preferences': props<{ preferences: any }>()
+  }
+});
 
-export const signup = createAction(
-  '[Auth] Signup',
-  props<{ name: string; email: string; password: string }>()
-);
+export const AuthApiActions = createActionGroup({
+  source: 'Auth API',
+  events: {
+    // Session Results
+    'Init Session Success': props<{ user: User }>(),
+    'Init Session Failure': emptyProps(),
 
-export const signupSuccess = createAction(
-  '[Auth] Signup Success',
-  // --- CORRECTED: This should match loginSuccess ---
-  props<{ user: User }>()
-);
+    // Login Results
+    'Login Success': props<{ user: User }>(),
+    'Login Failure': props<{ error: string }>(),
 
-export const signupFailure = createAction(
-  '[Auth] Signup Failure',
-  props<{ error: string }>()
-);
+    // Signup Results
+    'Signup Success': props<{ user: User }>(),
+    'Signup Failure': props<{ error: string }>(),
 
-export const login = createAction(
-  '[Auth] Login',
-  props<{ email: string; password: string }>()
-);
+    // Logout Results
+    'Logout Success': emptyProps(),
 
-export const loginSuccess = createAction(
-  '[Auth] Login Success',
-  props<{ user: User }>()
-);
+    // Profile Results
+    'Update User Profile Success': props<{ user: User }>(),
+    'Update User Profile Failure': props<{ error: string }>(),
 
-export const loginFailure = createAction(
-  '[Auth] Login Failure',
-  props<{ error: string }>()
-);
-
-// --- LOGOUT ---
-export const logout = createAction('[Auth] Logout');
-export const logoutSuccess = createAction('[Auth] Logout Success');
-
-
-// --- GET USER DETAILS (for re-hydrating session) ---
-// Note: This is different from initSession. 
-// This action is what 'initSession' *uses*.
-export const getUserDetails = createAction(
-  '[Auth] Get User Details',
-  props<{ token: string }>()
-);
-
-export const getUserDetailsSuccess = createAction(
-  '[Auth] Get User Details Success',
-  props<{ user: User }>() 
-);
-
-export const getUserDetailsFailure = createAction(
-  '[Auth] Get User Details Failure',
-  props<{ error: string }>()
-);
+    // Preferences Results
+    'Update User Preferences Success': props<{ user: User }>(),
+    'Update User Preferences Failure': props<{ error: string }>()
+  }
+});

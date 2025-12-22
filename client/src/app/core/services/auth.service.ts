@@ -21,6 +21,14 @@ export class AuthService {
   private apiUrl: string = `${(environment as envType).apiUrl}/auth`;
   private snackbar = inject(SnackbarService);
 
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+  }
+
   constructor (){
     // console.log(this.apiUrl + '/login');
   }
@@ -83,6 +91,22 @@ export class AuthService {
 
     // --- CORRECTED: Removed all 'tap' and 'catchError' blocks that dispatch actions ---
     return this.http.get<User>(`${this.apiUrl}/get-user-details`, { headers });
+  }
+
+  updateProfile(data: Partial<User>): Observable<{ message: string, user: User }> {
+    return this.http.put<{ message: string, user: User }>(
+      `${this.apiUrl}/profile`, 
+      data, 
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  updateUserPreferences(preferences: any): Observable<{ message: string, user: User }> {
+    return this.http.put<{ message: string, user: User }>(
+      `${this.apiUrl}/preferences`,
+      { preferences },
+      { headers: this.getAuthHeaders() }
+    );
   }
 }
 

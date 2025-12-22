@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
 
 # --- Re-usable Base Models ---
 
@@ -39,6 +40,8 @@ class StreamRequest(BaseModel):
     chatId: str
     # CORRECTED: Image must be Optional, defaulting to None
     image: Optional[str] = None
+    language: Optional[str] = "English"
+    user_context: Optional[Dict[str, Any]] = None
 
 # --- Title Generation Endpoints ---
 

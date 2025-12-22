@@ -1,13 +1,12 @@
 import { createReducer, on } from '@ngrx/store';
 import { initialChatState, ContentBlock, ChatMessage } from './chat.state';
-import * as ChatActions from './chat.actions';
+import { ChatPageActions, ChatApiActions } from './chat.actions';
 
 export const chatReducer = createReducer(
   initialChatState,
 
-  // --- Handlers for Loading Chat History ---
-  
-  on(ChatActions.loadChatHistory, (state, { chatId }) => ({
+  // --- 1. Navigation & Loading ---
+  on(ChatPageActions.enterChat, (state, { chatId }) => ({
     ...state,
     isLoading: true,
     error: null,
@@ -15,34 +14,31 @@ export const chatReducer = createReducer(
     currentChatId: chatId, // Set the new chat ID
   })),
 
-  on(ChatActions.loadChatHistorySuccess, (state, { messages }) => ({
+  on(ChatApiActions.loadChatHistorySuccess, (state, { messages }) => ({
     ...state,
     isLoading: false,
     messages: messages,
   })),
 
-  on(ChatActions.loadChatHistoryFailure, (state, { error }) => ({
+  on(ChatApiActions.loadChatHistoryFailure, (state, { error }) => ({
     ...state,
     isLoading: false,
     error: error,
     currentChatId: null, // Clear ID on failure
   })),
 
-  // --- Handler for Clearing the Active Chat (for /chat route) ---
-  on(ChatActions.clearActiveChat, (state) => ({
+  on(ChatPageActions.clearActiveChat, (state) => ({
     ...state,
     messages: [],
-    currentChatId: null, // Clear the chat ID
+    currentChatId: null,
     isLoading: false,
     error: null,
     streamStatus: null
   })),
 
-
-  // --- Handlers for Real-Time Chat ---
-  
-  on(ChatActions.sendMessage, (state, { message, chatId, image }) => {
-    // 1. Create User Message
+  // --- 2. Real-Time Chat & Streaming ---
+  on(ChatPageActions.sendMessage, (state, { message, chatId, image }) => {
+    // 1. Create User Message Content
     const contentBlocks: ContentBlock[] = [];
     
     // Add text block
@@ -59,12 +55,12 @@ export const chatReducer = createReducer(
       _id: crypto.randomUUID(),
       sender: 'user',
       content: contentBlocks,
-      // No timestamps needed, backend will add
+      // No timestamps needed locally, backend adds them
     };
 
     // 2. Create Placeholder AI Message (for streaming)
     const aiPlaceholder: ChatMessage = {
-      _id: "temp-id", // The temporary AI message
+      _id: "temp-id", // Temporary ID
       sender: 'ai',
       content: [{ type: 'text', value: '' }], // Empty start
       isStreaming: true
@@ -74,49 +70,41 @@ export const chatReducer = createReducer(
       ...state,
       isLoading: true, // Show loading until stream starts
       isStreaming: true,
-      // Initialize Status Object with empty steps
+      // Initialize Status Object
       streamStatus: { current: 'Thinking...', steps: [] }, 
       error: null,
-      currentChatId: chatId, // Set chat ID when sending
+      currentChatId: chatId, // Ensure chat ID is set
       messages: [...state.messages, userMsg, aiPlaceholder],
     };
   }),
 
-  on(ChatActions.streamStarted, (state) => ({
+  on(ChatApiActions.streamStarted, (state) => ({
     ...state,
     isLoading: false, // Stop loading spinner, stream has begun
     // Note: isStreaming remains true
   })),
 
-  // --- NEW: Handle Status Updates (e.g., "Analyzing Image...") ---
-  on(ChatActions.updateStreamStatus, (state, { status }) => ({
+  // Handle Status Updates (e.g., "Analyzing Image...")
+  on(ChatApiActions.updateStreamStatus, (state, { status }) => ({
     ...state,
     streamStatus: state.streamStatus 
       ? { ...state.streamStatus, current: status }
       : { current: status, steps: [] }
   })),
 
-  // --- NEW: Add Log Step (Reasoning) ---
-  on(ChatActions.addStreamLog, (state, { log }) => {
-    // If no messages exist, we can't attach reasoning
-    if (state.messages.length === 0) {
-      return state;
-    }
+  // Add Log Step (Reasoning)
+  on(ChatApiActions.addStreamLog, (state, { log }) => {
+    if (state.messages.length === 0) return state;
 
-    // 1. Copy the messages array to maintain immutability
+    // Immutable update of the last message's reasoning array
     const updatedMessages = [...state.messages];
     const lastMsgIndex = updatedMessages.length - 1;
-
-    // 2. Copy the last message (the AI message currently streaming)
     const lastMessage = { ...updatedMessages[lastMsgIndex] };
 
-    // 3. Append the new log to the reasoning array
     const currentReasoning = lastMessage.reasoning ? [...lastMessage.reasoning] : [];
     currentReasoning.push(log);
 
     lastMessage.reasoning = currentReasoning;
-    
-    // 4. Update the array with the modified message
     updatedMessages[lastMsgIndex] = lastMessage;
 
     return {
@@ -125,24 +113,15 @@ export const chatReducer = createReducer(
     };
   }),
 
-  // --- NEW: Handle Sources Updates (Fix for Sources not showing) ---
-  on(ChatActions.updateStreamSources, (state, { sources }) => {
-    // If no messages exist, we can't attach sources
-    if (state.messages.length === 0) {
-      return state;
-    }
+  // Add Sources
+  on(ChatApiActions.updateStreamSources, (state, { sources }) => {
+    if (state.messages.length === 0) return state;
 
-    // 1. Copy the messages array
     const updatedMessages = [...state.messages];
     const lastMsgIndex = updatedMessages.length - 1;
-
-    // 2. Copy the last message
     const lastMessage = { ...updatedMessages[lastMsgIndex] };
 
-    // 3. Attach sources to the message
     lastMessage.sources = sources;
-
-    // 4. Update the array
     updatedMessages[lastMsgIndex] = lastMessage;
 
     return {
@@ -151,8 +130,8 @@ export const chatReducer = createReducer(
     };
   }),
 
-  on(ChatActions.receiveStreamChunk, (state, { chunk }) => {
-    // This logic appends the new chunk to the last (streaming) message
+  // Handle Text Chunks (The actual answer)
+  on(ChatApiActions.receiveStreamChunk, (state, { chunk }) => {
     if (state.messages.length === 0) return state;
     
     const messages = [...state.messages];
@@ -172,7 +151,7 @@ export const chatReducer = createReducer(
        lastBlock.value += chunk;
        newContent[newContent.length - 1] = lastBlock;
     } else {
-       // This is the first chunk or previous block wasn't text, create a new text block
+       // Create a new text block
        newContent.push({ type: 'text', value: chunk });
     }
 
@@ -182,11 +161,11 @@ export const chatReducer = createReducer(
     return {
       ...state,
       messages,
-      isLoading: false // Ensure loading is off as we are receiving data
+      isLoading: false 
     };
   }),
 
-  on(ChatActions.streamComplete, (state, { chatId }) => {
+  on(ChatApiActions.streamComplete, (state, { chatId }) => {
     if (state.messages.length === 0) return state;
     
     const messages = [...state.messages];
@@ -198,7 +177,7 @@ export const chatReducer = createReducer(
     // Finalize the message
     lastMessage.isStreaming = false;
     if (lastMessage._id === "temp-id") {
-        lastMessage._id = crypto.randomUUID(); // Replace "temp-id" with real UUID
+        lastMessage._id = crypto.randomUUID(); 
     }
     messages[lastMessageIndex] = lastMessage;
 
@@ -211,7 +190,7 @@ export const chatReducer = createReducer(
     };
   }),
 
-  on(ChatActions.streamFailure, (state, { error }) => ({
+  on(ChatApiActions.streamFailure, (state, { error }) => ({
     ...state,
     isLoading: false,
     isStreaming: false,
@@ -219,31 +198,36 @@ export const chatReducer = createReducer(
     error: error,
   })),
 
-  // --- Handlers for Chat List (Sidebar) ---
-  
-  on(ChatActions.getAllChats,(state)=> ({
+  on(ChatPageActions.stopStream, (state) => ({
+    ...state,
+    isLoading: false,
+    isStreaming: false,
+    streamStatus: null
+  })),
+
+  // --- 3. Chat Management (Sidebar) ---
+
+  on(ChatPageActions.getAllChats, (state) => ({
     ...state,
     isLoading: true,
     error: null,
   })),
 
-  on(ChatActions.getAllChatsSuccess, (state, { chats }) => ({
+  on(ChatApiActions.getAllChatsSuccess, (state, { chats }) => ({
     ...state,
     isLoading: false,
     chatList: chats,
   })),
 
-  on(ChatActions.getAllChatsFailure, (state, { error }) => ({
+  on(ChatApiActions.getAllChatsFailure, (state, { error }) => ({
     ...state,
     isLoading: false,
     error: error,
   })),
 
-  // --- Handler for Local Update (No Reload Flash) ---
-  
-  on(ChatActions.saveChatHistorySuccess, (state, { chatId, newTitle }) => ({
+  // Local Update (No Reload Flash) when title changes
+  on(ChatApiActions.saveChatHistorySuccess, (state, { chatId, newTitle }) => ({
     ...state,
-    // Update the title of the chat in the chatList locally
     chatList: state.chatList ? state.chatList.map(chat => 
       chat._id === chatId 
         ? { ...chat, title: newTitle } 
@@ -251,64 +235,114 @@ export const chatReducer = createReducer(
     ) : []
   })),
 
-  on(ChatActions.saveChatHistoryFailure, (state, { error }) => ({
+  on(ChatApiActions.saveChatHistoryFailure, (state, { error }) => ({
     ...state,
     error: error,
   })),
 
-  // --- NEW SEARCH HANDLERS ---
-  on(ChatActions.searchChats, (state) => ({
+  // --- 4. Search ---
+
+  on(ChatPageActions.searchChats, (state) => ({
     ...state,
     isSearching: true,
     error: null
   })),
 
-  on(ChatActions.searchChatsSuccess, (state, { results }) => ({
+  on(ChatApiActions.searchChatsSuccess, (state, { results }) => ({
     ...state,
     isSearching: false,
     searchResults: results
   })),
 
-  on(ChatActions.searchChatsFailure, (state, { error }) => ({
+  on(ChatApiActions.searchChatsFailure, (state, { error }) => ({
     ...state,
     isSearching: false,
     error: error
   })),
 
-  on(ChatActions.stopStream, (state)=>({
+  // --- 5. Sharing ---
+
+  on(ChatPageActions.shareChat, (state) => ({
     ...state,
-    isLoading: false,
-    isStreaming: false,
-    streamStatus: null
+    isSharing: true,
+    error: null,
   })),
 
-  // --- STT ---
-  on(ChatActions.transcribeAudio, (state) => ({
+  on(ChatApiActions.shareChatSuccess, (state, { shareUrl, shareId }) => ({
+    ...state,
+    shareUrl: shareUrl,
+    shareId: shareId,
+    isSharing: false,
+  })),
+
+  on(ChatApiActions.shareChatFailure, (state, { error }) => ({
+    ...state,
+    error,
+    isSharing: false,
+  })),
+
+  on(ChatPageActions.loadSharedChat, (state) => ({
+    ...state,
+    isLoading: true,
+    error: null,
+  })),
+  on(ChatPageActions.clearShareState, (state) => ({
+    ...state,
+    shareUrl: null,
+    shareId: null,
+    isSharing: false,
+    error: null
+  })),
+
+  on(ChatApiActions.loadSharedChatSuccess, (state, { messages, title, shareId }) => ({
+    ...state,
+    isLoading: false,
+    messages: messages,
+    title: title,
+    shareId: shareId
+  })),
+
+  on(ChatApiActions.loadSharedChatFailure, (state, { error }) => ({
+    ...state,
+    isLoading: false,
+    error: error,
+  })),
+  
+  on(ChatApiActions.saveSharedConversationSuccess, (state, { chatId }) => ({
+      ...state,
+      currentChatId: chatId
+  })),
+
+  // --- 6. Tools (STT, Vision, Translate) ---
+
+  // Audio / STT
+  on(ChatPageActions.transcribeAudio, (state) => ({
     ...state,
     isTranscribing: true,
     error: null,
   })),
-  on(ChatActions.transcribeAudioSuccess, (state, { text }) => ({
+  on(ChatApiActions.transcribeAudioSuccess, (state, { text }) => ({
     ...state,
     isTranscribing: false,
     lastTranscription: text,
   })),
-  on(ChatActions.transcribeAudioFailure, (state, { error }) => ({
+  on(ChatApiActions.transcribeAudioFailure, (state, { error }) => ({
     ...state,
     isTranscribing: false,
     error,
   })),
 
-  // --- VISION ---
-  on(ChatActions.analyzeImage, (state) => ({
+  // Vision
+  on(ChatPageActions.analyzeImage, (state) => ({
     ...state,
     isAnalyzingImage: true,
     error: null,
   })),
-  on(ChatActions.analyzeImageSuccess, (state, { imageUrl, result }) => ({
+  on(ChatApiActions.analyzeImageSuccess, (state, { imageUrl, result }) => ({
     ...state,
     isAnalyzingImage: false,
     lastVisionResult: result,
+    // Add the vision result as a new message pair immediately (optional logic, based on your UX)
     messages: [
       ...state.messages,
       {
@@ -321,58 +355,26 @@ export const chatReducer = createReducer(
       },
     ],
   })),
-  on(ChatActions.analyzeImageFailure, (state, { error }) => ({
+  on(ChatApiActions.analyzeImageFailure, (state, { error }) => ({
     ...state,
     isAnalyzingImage: false,
     error,
   })),
 
-  // --- TRANSLATE ---
-  on(ChatActions.translateText, (state) => ({
+  // Translate
+  on(ChatPageActions.translateText, (state) => ({
     ...state,
     isTranslating: true,
     error: null,
   })),
-  on(ChatActions.translateTextSuccess, (state, { translated }) => ({
+  on(ChatApiActions.translateTextSuccess, (state, { translated }) => ({
     ...state,
     isTranslating: false,
     lastTranslation: translated,
   })),
-  on(ChatActions.translateTextFailure, (state, { error }) => ({
+  on(ChatApiActions.translateTextFailure, (state, { error }) => ({
     ...state,
     isTranslating: false,
     error,
-  })),on(ChatActions.shareChat, (state) => ({
-    ...state,
-    isSharing: true,
-    error: null,
-  })),
-  on(ChatActions.shareChatSuccess, (state, { shareUrl, shareId }) => ({
-    ...state,
-    shareUrl: shareUrl,
-    shareId: shareId,
-    isSharing: false,
-  })),
-  on(ChatActions.shareChatFailure, (state, { error }) => ({
-    ...state,
-    error,
-    isSharing: false,
-  })),
-  on(ChatActions.loadSharedChat, (state) => ({
-    ...state,
-    isLoading: true,
-    error: null,
-  })),
-  on(ChatActions.loadSharedChatSuccess, (state, { messages, title, createdAt, shareId}) => ({
-    ...state,
-    isLoading: false,
-    messages: messages,
-    title: title,
-    shareId: shareId
-  })),
-  on(ChatActions.loadSharedChatFailure, (state, { error }) => ({
-    ...state,
-    isLoading: false,
-    error: error,
-  })),
+  }))
 );

@@ -21,7 +21,7 @@
         <div class="prose" [class.dark-prose]="isDarkMode()">
             <!-- UPDATED: Pass sources to streaming text -->
             <app-streaming-text 
-                [content]="$any(block.content)"
+                [content]="$any(block.content)" 
                 [sources]="sources || []">
             </app-streaming-text>
         </div>
@@ -46,7 +46,7 @@
 
     <!-- CODE BLOCK -->
     <ng-container *ngSwitchCase="'code'">
-      <div class="code-wrapper my-4 rounded-xl overflow-hidden ">
+      <div class="code-wrapper my-4 rounded-xl">
         <div class="flex justify-between items-center px-4 py-3 code-header">
           <span class="text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
             {{ $any(block.content).language || 'Code' }}
@@ -57,7 +57,7 @@
             <span>Copy</span> 
           </button>
         </div>
-        <div class="relative overflow-x-auto mt-0.5">
+        <div class="code-body relative overflow-x-auto mt-0.5">
           <pre class="m-0 p-4"><code 
             [appHighlight]="$any(block.content).code" 
             [language]="$any(block.content).language" 

@@ -3,15 +3,14 @@ from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from ..core.llm_factory import get_llm_factory
 
-# Define the desired output structure
 class IntentOutput(BaseModel):
-    intent: str = Field(description="One of: search, reasoning, general")
-    dynamic_status: str = Field(description="A short, present-tense description of what the AI is about to do. E.g., 'Searching for latest AI news...', 'Calculating the trajectory...', 'Drafting a poem...'")
+    intent: str = Field(description="One of: search, reasoning, general, change_preference")
+    dynamic_status: str = Field(description="Action description")
+    pref_key: str | None = Field(description="If change_preference, the key (language/theme/name).", default=None)
+    pref_value: str | None = Field(description="If change_preference, the NEW value.", default=None)
+    input_language: str = Field(description="The language the user is writing in.")
 
 class IntentService:
-    """
-    Returns: 'search', 'reasoning', or 'general' along with a dynamic status.
-    """
     def __init__(self):
         factory = get_llm_factory()
         self.llm = factory.get_tooling_model()
@@ -19,17 +18,16 @@ class IntentService:
 
         self.router_prompt = ChatPromptTemplate.from_messages([
             ("system", """
-            You are the 'Brain' of an advanced AI assistant named Ultron.
-            
-            Your task:
-            1. Analyze the user's input.
-            2. Classify it into EXACTLY one category: 'search', 'reasoning', or 'general'.
-            3. Write a 'dynamic_status' message that briefly describes the action you are taking.
+            You are the 'Brain' of Ultron. 
+            1. Classify the user's intent.
+            2. Detect the language the user is writing in.
             
             Categories:
-            - search: For current events, news, weather, facts, sports. Status ex: "Scanning web for real-time weather..."
-            - reasoning: For logic, math, coding, planning. Status ex: "Analyzing logic steps...", "Designing code architecture..."
-            - general: For greetings, chat, creative writing. Status ex: "Thinking of a creative response...", " formulating reply..."
+            - search: Current events, news, weather.
+            - reasoning: Logic, math, coding.
+            - change_preference: ONLY if the user explicitly COMMANDS a change (e.g., "Change language to Hindi", "Set theme to Dark").
+                * DO NOT use this for questions like "What is my language?" or "Check my settings".
+            - general: Chat, greetings, and QUESTIONS about current settings/preferences.
 
             {format_instructions}
             """),
@@ -45,16 +43,32 @@ class IntentService:
                 "format_instructions": self.parser.get_format_instructions()
             })
             
-            # Normalize intent
             intent = result.get("intent", "general").strip().lower()
-            if "search" in intent: intent = "search"
+            
+            # --- CORRECTION LOGIC ---
+            # If intent is 'change_preference' but NO value was provided, 
+            # it means the user likely asked a question (e.g., "What is my language?").
+            # Revert to 'general' to avoid accidental null updates.
+            pref_value = result.get("pref_value")
+            
+            if "preference" in intent:
+                if not pref_value or pref_value.lower() == "none" or pref_value.lower() == "null":
+                    intent = "general"
+                else:
+                    intent = "change_preference"
+            elif "search" in intent: intent = "search"
             elif "reasoning" in intent: intent = "reasoning"
             else: intent = "general"
             
             return {
                 "intent": intent,
-                "status": result.get("dynamic_status", "Processing...")
+                "status": result.get("dynamic_status", "Processing..."),
+                "pref_data": {
+                    "key": result.get("pref_key"), 
+                    "value": pref_value
+                } if intent == "change_preference" else None,
+                "input_language": result.get("input_language", "English")
             }
         except Exception as e:
-            print(f"Intent Classification Failed: {e}")
-            return {"intent": "general", "status": "Thinking..."}
+            print(f"Intent Error: {e}")
+            return {"intent": "general", "status": "Thinking...", "pref_data": None, "input_language": "English"}

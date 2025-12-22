@@ -1,7 +1,6 @@
 import { ChangeDetectorRef, Component, inject, OnInit, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
-import * as AuthActions from './store/auth/auth.actions';
 import { filter, Observable } from 'rxjs';
 import { selectIsAuthenticated } from './store/auth/auth.selectors';
 import { CommonModule } from '@angular/common';
@@ -11,6 +10,7 @@ import { LoadingService } from './core/services/loading.service';
 import { ThemeService } from './core/services/theme.services';
 import { AppState } from './store'; 
 import { DrawerService } from './core/services/drawer.service';
+import { AuthActions } from './store/auth/auth.actions';
 
 @Component({
   selector: 'app-root',
