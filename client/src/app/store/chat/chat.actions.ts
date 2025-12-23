@@ -1,6 +1,12 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { ChatMessage, Source } from './chat.state';
 
+export interface Attachment {
+  type: 'image_url' | 'file';
+  url: string;
+  name: string;
+}
+
 // 1. Actions triggered by the User or the UI (Page Events)
 export const ChatPageActions = createActionGroup({
   source: 'Chat Page',
@@ -13,7 +19,8 @@ export const ChatPageActions = createActionGroup({
     'Search Chats': props<{ query: string }>(),
     
     // Interaction
-    'Send Message': props<{ message: string; chatId: string; image?: string }>(),
+    'Send Message': props<{ message: string; chatId: string; image?: string, attachments: Attachment[]; // [{ type: 'image_url', url: 'https://storage...' }]
+       base64Files: string[]; }>(),
     'Stop Stream': emptyProps(),
     
     // Tools

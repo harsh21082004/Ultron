@@ -1,0 +1,7 @@
+client/
+node_modules/
+.git/
+.env
+**/venv
+**/node_modules
+server/gcp-key.json

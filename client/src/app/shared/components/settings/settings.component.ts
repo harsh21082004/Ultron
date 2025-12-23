@@ -19,6 +19,7 @@ import { selectAuthUser, selectAuthLoading } from '../../../store/auth/auth.sele
 import { ThemeService } from '../../../core/services/theme.services';
 import { User } from '../../models/user.model';
 import { AuthActions } from '../../../store/auth/auth.actions';
+import { FileUploadService } from '../../../core/services/file-upload.service'; // Ensure this path is correct
 
 @Component({
   selector: 'app-settings-dialog',
@@ -79,7 +80,7 @@ import { AuthActions } from '../../../store/auth/auth.actions';
         <div class="content-pane p-4 sm:p-6 overflow-y-auto custom-scrollbar relative"
              [ngClass]="isMobileView ? 'w-[calc(100%-60px)]' : 'w-2/3'">
           
-          @if (isLoading()) {
+          @if (isLoading() || isUploading()) {
              <div class="absolute inset-0 bg-black/10 dark:bg-white/5 z-50 flex items-center justify-center backdrop-blur-sm">
                 <mat-spinner diameter="40"></mat-spinner>
              </div>
@@ -93,12 +94,22 @@ import { AuthActions } from '../../../store/auth/auth.actions';
                   <div class="relative group cursor-pointer" (click)="fileInput.click()">
                     <img [src]="editData.profilePic || 'assets/images/profile.png'" 
                          class="w-28 h-28 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 shadow-md group-hover:opacity-80 transition-opacity">
+                    
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <mat-icon class="text-white drop-shadow-md text-3xl font-bold">edit</mat-icon>
                     </div>
+                    
+                    @if (isUploading()) {
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                            <mat-spinner diameter="24" color="accent"></mat-spinner>
+                        </div>
+                    }
+
                     <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
                   </div>
-                  <p class="text-xs text-center opacity-60 -mt-4">Click to change avatar</p>
+                  <p class="text-xs text-center opacity-60 -mt-4">
+                      {{ isUploading() ? 'Uploading...' : 'Click to change avatar' }}
+                  </p>
 
                   <div class="w-full">
                     <label class="block text-sm font-medium opacity-80 mb-1">Display Name</label>
@@ -117,7 +128,7 @@ import { AuthActions } from '../../../store/auth/auth.actions';
                   </div>
 
                   <button mat-flat-button color="primary" class="w-full mt-2" 
-                          [disabled]="!hasChanges() || isLoading()" 
+                          [disabled]="!hasChanges() || isLoading() || isUploading()" 
                           (click)="saveProfile()">
                     Save Changes
                   </button>
@@ -164,6 +175,7 @@ import { AuthActions } from '../../../store/auth/auth.actions';
                   </div>
                 </div>
               }
+              
               @case ('Data Controls') {
                  <div class="flex flex-col gap-4">
                     <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -216,12 +228,14 @@ export class SettingsDialogComponent implements OnInit {
   private themeService = inject(ThemeService);
   private dialogRef = inject(MatDialogRef<SettingsDialogComponent>);
   private store = inject(Store<AppState>);
+  private fileUploadService = inject(FileUploadService); // INJECTED
 
   // Signals
-  selectedCategory = signal('Profile'); // Default to Profile
+  selectedCategory = signal('Profile');
   currentTheme = computed(() => this.themeService.currentTheme());
   currentUser = this.store.selectSignal(selectAuthUser);
   isLoading = this.store.selectSignal(selectAuthLoading);
+  isUploading = signal(false); // NEW SIGNAL
 
   // Local Form State
   editData: Partial<User> & { preferences: any } = { 
@@ -249,12 +263,11 @@ export class SettingsDialogComponent implements OnInit {
           profilePic: user.profilePic,
           preferences: {
             language: user.preferences?.language || 'English',
-            theme: user.preferences?.theme || 'light' // Default to 'light' if not set
+            theme: user.preferences?.theme || 'light'
           }
         };
       }
     });
-    console.log(this.editData)
   }
 
   @HostListener('window:resize', ['$event'])
@@ -277,24 +290,44 @@ export class SettingsDialogComponent implements OnInit {
 
   // 1. Theme Change
   onThemeChange(newTheme: string) {
-    // 1. Update UI immediately
-    if (newTheme === 'light') this.themeService.setTheme('light');
-    if (newTheme === 'dark') this.themeService.setTheme('dark');
-
-    // 2. Persist to DB
+    if (newTheme === 'light') this.themeService.setTheme("light");
+    if (newTheme === 'dark') this.themeService.setTheme("dark");
     this.savePreference('theme', newTheme);
   }
 
-  // 2. Profile Picture Upload
+  // 2. Profile Picture Upload (UPDATED)
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
+      this.isUploading.set(true); // Start Spinner
+
+      // 1. Local Preview (Immediate feedback)
       const reader = new FileReader();
       reader.onload = () => {
-        // Update local preview immediately
-        this.editData.profilePic = reader.result as string;
+         // Temporarily show local image while uploading
+         // Note: We don't save this base64 string, we wait for the URL
+         // But setting it here updates the UI immediately.
+         this.editData.profilePic = reader.result as string; 
       };
       reader.readAsDataURL(file);
+
+      // 2. Upload to Cloud
+      this.fileUploadService.upload(file, 'profile').subscribe({
+        next: (response) => {
+          // Success: Update editData with the REAL Cloud URL
+          // Assuming response structure: { files: [ { url: '...' } ] }
+          if (response.files && response.files.length > 0) {
+             this.editData.profilePic = response.files[0].url;
+             console.log('Upload success:', this.editData.profilePic);
+          }
+          this.isUploading.set(false); // Stop Spinner
+        },
+        error: (err) => {
+          console.error('Upload failed:', err);
+          // Revert or show error toast
+          this.isUploading.set(false); // Stop Spinner
+        }
+      });
     }
   }
 
@@ -306,7 +339,7 @@ export class SettingsDialogComponent implements OnInit {
   }
 
   saveProfile() {
-    // Dispatch Action to Update API
+    // Dispatch Action to Update API with the new Cloud URL and Name
     this.store.dispatch(AuthActions.updateUserProfile({
       data: {
         name: this.editData.name,
@@ -316,14 +349,12 @@ export class SettingsDialogComponent implements OnInit {
   }
 
   savePreference(key: string, value: any) {
-    // Update deeply nested preference
     const currentPrefs = this.editData.preferences || {};
     const newPrefs = { ...currentPrefs, [key]: value };
-
-    console.log('Saving preference:', newPrefs);
     
-    this.store.dispatch(AuthActions.updateUserPreferences({
-      preferences: newPrefs
+    // We send only the preferences part to update
+    this.store.dispatch(AuthActions.updateUserProfile({
+      data: { preferences: newPrefs }
     }));
   }
 

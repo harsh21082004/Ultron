@@ -14,14 +14,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable, Subscription, firstValueFrom, withLatestFrom } from 'rxjs';
+import { Observable, Subscription, firstValueFrom, lastValueFrom, withLatestFrom } from 'rxjs';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AppState } from '../../../store';
-// UPDATED: Import the grouped selectors and actions
 import { ChatSelectors } from '../../../store/chat/chat.selectors';
 import { ChatPageActions } from '../../../store/chat/chat.actions';
 import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state'; 
@@ -35,6 +34,7 @@ import { HeaderComponent } from '../header/header.component';
 import { UltronLoaderComponent } from '../ultron-loader/ultron-loader.component';
 import { ClipboardService } from '../../../core/services/clipboard.service';
 import { AudioApiService } from '../../../core/services/audio-api.service';
+import { FileUploadService } from '../../../core/services/file-upload.service';
 
 const PROMPT_SUGGESTIONS = [
   { title: "Smart Budget", description: "A budget that fits your lifestyle." },
@@ -68,7 +68,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('chatContainer') private chatContainer!: ElementRef; 
   @ViewChild(ChatInputComponent) private chatInputComponent!: ChatInputComponent;
 
-  // Observables using the new Selector Group
   public messages$: Observable<ChatMessage[]>;
   public isLoading$: Observable<boolean>;
   public isStreaming$: Observable<boolean>;
@@ -78,9 +77,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   public isSharedChatView = false;
   public promptSuggestions = PROMPT_SUGGESTIONS;
   public isMobileView = false;
-  public showReasoningLogs = false; 
   
-  // Flag to track if we need to perform the initial scroll-to-bottom
   private isInitialLoad = true; 
 
   private store = inject(Store<AppState>);
@@ -88,12 +85,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   private router = inject(Router); 
   private clipboard = inject(ClipboardService);
   private audioService = inject(AudioApiService); 
-  
+  private fileUploadService = inject(FileUploadService);
+
   private routeSub!: Subscription;
   private messagesSub!: Subscription;
 
   constructor() {
-    // UPDATED: Use Grouped Selectors
     this.messages$ = this.store.select(ChatSelectors.selectMessages);
     this.isLoading$ = this.store.select(ChatSelectors.selectIsLoading);
     this.isStreaming$ = this.store.select(ChatSelectors.selectIsStreaming);
@@ -101,10 +98,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.user$ = this.store.select(selectAuthUser);
 
     this.updateIsMobileView();
-  }
-
-  toggleReasoningLogs(): void {
-    this.showReasoningLogs = !this.showReasoningLogs;
   }
 
   @HostListener('window:resize')
@@ -126,56 +119,33 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       const urlChatId = params.get('id');
       const routeShareId = params.get('shareId');
 
-      // Reset initial load flag
       this.isInitialLoad = true;
 
-      // --- CASE 1: Shared Chat Route ---
       if (routeShareId) {
         this.isSharedChatView = true;
-        
-        // FIX: Explicitly clear the active chat ID.
-        // This ensures 'currentChatId' becomes null, so the Sidebar deselects the old chat.
         this.store.dispatch(ChatPageActions.clearActiveChat());
-
-        // Only load if we aren't already viewing this specific shared chat
         if (routeShareId !== currentShareId) {
              this.store.dispatch(ChatPageActions.loadSharedChat({ shareId: routeShareId }));
         }
-      } 
-      
-      // --- CASE 2: Normal Chat Route ---
-      else if (urlChatId) {
+      } else if (urlChatId) {
         this.isSharedChatView = false;
-        
-        // Clear share state so the header switches back to normal mode
-        if (currentShareId) {
-            this.store.dispatch(ChatPageActions.clearShareState());
-        }
-
-        // Logic: Reload if ID changed OR if we just came from a Shared View
+        if (currentShareId) this.store.dispatch(ChatPageActions.clearShareState());
         if (urlChatId !== currentLoadedChatId || !!currentShareId) {
           this.store.dispatch(ChatPageActions.enterChat({ chatId: urlChatId }));
         }
-      } 
-      
-      // --- CASE 3: New Chat / Root ---
-      else {
+      } else {
         this.isSharedChatView = false;
-        // Clear everything
-        if (currentShareId) {
-            this.store.dispatch(ChatPageActions.clearShareState());
-        }
+        if (currentShareId) this.store.dispatch(ChatPageActions.clearShareState());
         this.store.dispatch(ChatPageActions.clearActiveChat());
       }
     });
   }
 
   ngAfterViewInit(): void {
-    // Only scroll to bottom on the FIRST view update (Initial Load)
     this.messagesSub = this.messageElements.changes.subscribe(() => {
       if (this.isInitialLoad && this.messageElements.length > 0) {
         this.scrollToBottom();
-        this.isInitialLoad = false; // Disable auto-scroll-bottom after first load
+        this.isInitialLoad = false; 
       }
     });
   }
@@ -189,42 +159,49 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     return message._id;
   }
 
-  public async handleSendMessage(event: ChatMessageEvent): Promise<void> {
-    this.showReasoningLogs = false;
-    
-    let finalMessage = event.message;
-    let base64Image: string | undefined = undefined;
+  // --- HELPER: Check if a message has actual text content ---
+  // This prevents rendering an empty bubble if the user only sent an image
+  public hasTextBlock(message: ChatMessage): boolean {
+    return message.content.some(block => block.type === 'text' && block.value.trim().length > 0);
+  }
 
-    // Handle File Attachments
-    if (event.files && event.files.length > 0) {
-      for (const file of event.files) {
-        if (file.type.startsWith('audio')) {
-          try {
-            // Using firstValueFrom for cleaner async/await
-            const res = await firstValueFrom(this.audioService.transcribe(file));
-            finalMessage += ` ${res.text}`; 
-          } catch (err) {
-            console.error('Transcription failed', err);
-          }
-        } 
-        else if (file.type.startsWith('image')) {
-          try {
-            base64Image = await this.fileToBase64(file);
-          } catch (err) {
-            console.error('Image processing failed', err);
-          }
+  public async handleSendMessage(event: ChatMessageEvent): Promise<void> {
+    let messageText = event.message;
+    const files = event.files;
+    
+    let attachments: any[] = [];
+    let base64Files: string[] = [];
+
+    if (files.length > 0) {
+      const base64Promises = files.map(file => this.fileToBase64(file));
+      const uploadPromise = lastValueFrom(this.fileUploadService.upload(files, 'chat-media'));
+
+      try {
+        const [base64Results, uploadResult] = await Promise.all([
+          Promise.all(base64Promises),
+          uploadPromise
+        ]);
+
+        base64Files = base64Results;
+
+        if (uploadResult && uploadResult.files) {
+          attachments = uploadResult.files.map(f => ({
+            type: f.mimeType.startsWith('image') ? 'image_url' : 'file',
+            url: f.url,
+            name: f.originalName
+          }));
         }
+      } catch (error) {
+        console.error("Error processing files:", error);
+        return; 
       }
     }
 
-    this.processNewMessage(finalMessage, base64Image);
-    
-    // Scroll to the user's message (Top Alignment) after a brief delay for rendering
+    this.processNewMessage(messageText, attachments, base64Files);
     setTimeout(() => this.scrollToLatestUserMessage(), 150);
   }
 
   public handleStopGeneration(): void {
-    // UPDATED: Use Page Action
     this.store.dispatch(ChatPageActions.stopStream());
   }
 
@@ -247,20 +224,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  private processNewMessage(message: string, image?: string): void {
+  private processNewMessage(message: string, attachments: any[] = [], base64Files: string[] = []): void {
     let currentChatId = this.route.snapshot.paramMap.get('id');
     const newId = crypto.randomUUID();
     
     const payload = { 
       message: message.trim(), 
       chatId: currentChatId || newId,
-      image 
+      attachments,
+      base64Files
     };
 
-    // UPDATED: Use Page Action
     this.store.dispatch(ChatPageActions.sendMessage(payload));
 
-    // Navigate to new URL if this was a brand new chat
     if (!currentChatId) {
       this.router.navigate(['/chat', newId]);
     }
@@ -273,45 +249,26 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       .join('\n');
   }
 
-  /**
-   * Scrolls the container to the absolute bottom.
-   * Used only on initial chat load/refresh.
-   */
   private scrollToBottom(): void {
     setTimeout(() => {
       if (this.chatContainer) {
         const element = this.chatContainer.nativeElement;
-        element.scrollTo({
-          top: element.scrollHeight,
-          behavior: 'instant' // Instant for initial load prevents jarring visual
-        });
+        element.scrollTo({ top: element.scrollHeight, behavior: 'instant' });
       }
     }, 100);
   }
 
-  /**
-   * Finds the latest User message element and scrolls it to the TOP of the view.
-   * This keeps the user's question and the start of the AI response visible.
-   */
   private scrollToLatestUserMessage(): void {
     try {
       const elements = this.messageElements.toArray();
-      
       if (elements.length > 0) {
-        // Typically the user message is the last one added before the AI placeholder.
         const userMsgIndex = elements.length >= 2 ? elements.length - 2 : elements.length - 1;
         const targetElement = elements[userMsgIndex]?.nativeElement;
-
         if (targetElement) {
-          targetElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start' // Aligns top of message with top of scroll container
-          });
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
-    } catch (err) {
-      console.warn("Scroll to user message failed:", err);
-    }
+    } catch (err) { console.warn("Scroll failed:", err); }
   }
 
   private fileToBase64(file: File): Promise<string> {

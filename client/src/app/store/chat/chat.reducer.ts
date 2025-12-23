@@ -37,28 +37,33 @@ export const chatReducer = createReducer(
   })),
 
   // --- 2. Real-Time Chat & Streaming ---
-  on(ChatPageActions.sendMessage, (state, { message, chatId, image }) => {
+  on(ChatPageActions.sendMessage, (state, { message, chatId, attachments }) => {
+    
     // 1. Create User Message Content
     const contentBlocks: ContentBlock[] = [];
     
-    // Add text block
-    if (message.trim()) {
-        contentBlocks.push({ type: 'text', value: message });
+    // A. Push Attachments FIRST (Images above text)
+    if (attachments && attachments.length > 0) {
+        attachments.forEach(att => {
+            contentBlocks.push({ 
+                type: att.type as any, // 'image_url' or 'file'
+                value: att.url 
+            });
+        });
     }
-    
-    // Add image block if present
-    if (image) {
-        contentBlocks.push({ type: 'image_url', value: image });
+
+    // B. Push Text SECOND
+    if (message && message.trim()) {
+        contentBlocks.push({ type: 'text', value: message });
     }
 
     const userMsg: ChatMessage = {
       _id: crypto.randomUUID(),
       sender: 'user',
       content: contentBlocks,
-      // No timestamps needed locally, backend adds them
+      // The backend will save these content blocks, containing the GCS URLs
     };
 
-    // 2. Create Placeholder AI Message (for streaming)
     const aiPlaceholder: ChatMessage = {
       _id: "temp-id", // Temporary ID
       sender: 'ai',
@@ -68,12 +73,11 @@ export const chatReducer = createReducer(
 
     return {
       ...state,
-      isLoading: true, // Show loading until stream starts
+      isLoading: true,
       isStreaming: true,
-      // Initialize Status Object
       streamStatus: { current: 'Thinking...', steps: [] }, 
       error: null,
-      currentChatId: chatId, // Ensure chat ID is set
+      currentChatId: chatId,
       messages: [...state.messages, userMsg, aiPlaceholder],
     };
   }),

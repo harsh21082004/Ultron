@@ -42,7 +42,7 @@ export class ChatApiService {
   sendMessageStream(
     message: string, 
     chatId: string, 
-    image?: string, 
+    images: string[] = [], 
     language: string = 'English',
     userContext?: any
   ): Observable<StreamEvent> {
@@ -50,10 +50,15 @@ export class ChatApiService {
       const controller = new AbortController();
       const signal = controller.signal;
 
-      const payload: any = { message, chatId, language, user_context: userContext }; // Included language
-      if (image) {
-        payload.image = image;
-      }
+      const payload: any = { 
+          message, 
+          chatId, 
+          language, 
+          user_context: userContext,
+          images: images // Send array of base64 strings
+      };
+
+      console.log(images)
 
       fetch(`${this.apiUrl}/stream`, {
         method: 'POST',

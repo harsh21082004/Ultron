@@ -61,11 +61,10 @@ export class ChatInputComponent {
    * Handles file selection from hidden inputs
    */
   onFileSelected(event: any): void {
-    const selectedFile = event.target.files[0];
-    if (selectedFile) {
-      // Prevent duplicates (optional, based on name)
-      if (!this.files.some(f => f.name === selectedFile.name)) {
-        this.files.push(selectedFile);
+    const selectedFiles = event.target.files;
+    if (selectedFiles) {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        this.files.push(selectedFiles[i]);
       }
       // Reset input so the same file can be selected again if needed (e.g. after removing)
       event.target.value = ''; 

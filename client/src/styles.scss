@@ -166,3 +166,38 @@ body {
 html.dark .share-dialog .mat-mdc-dialog-surface {
   background: linear-gradient(135deg, rgb(9, 31, 44) 20%, rgba(22, 26, 32, 1) 70%) !important;
 }
+
+*::-webkit-scrollbar {
+  width: 15px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #8a8a8a;
+  background: linear-gradient(
+    45deg,
+    rgba(138, 138, 138, 1) 0%,
+    rgba(163, 163, 163, 1) 51%,
+    rgba(184, 184, 184, 1) 100%
+  );
+  height: 50px;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+html.dark *::-webkit-scrollbar-thumb {
+  background: #8a8a8a;
+  background: linear-gradient(
+    45deg,
+    rgb(74, 74, 74) 0%,
+    rgb(104, 104, 104) 51%,
+    rgb(106, 106, 106) 100%
+  );
+  height: 50px;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+

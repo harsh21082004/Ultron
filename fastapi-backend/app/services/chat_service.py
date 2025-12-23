@@ -3,31 +3,20 @@ import asyncio
 from functools import lru_cache
 from typing import List, AsyncGenerator
 
-# LangChain Imports
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-# Local Imports
 from ..core.config import Settings, get_settings
 from ..models.chat_models import Message
 from ..core.llm_factory import get_llm_factory
-
-# Feature Services
 from .intent_service import IntentService
 from .tools_service import ToolsService
 from .vector_store_service import get_vector_store_service
-
-# Components
 from .regulations import SafetyRegulations
 from .session_manager import SessionManager
 
 class ChatService:
-    """
-    Final Agentic Chat Service.
-    Orchestrates the workflow: Intent -> RAG -> Tool/Search -> Answer -> Memory Save.
-    """
-
     def __init__(self, settings: Settings):
         if not settings.GROQ_API_KEY:
             raise ValueError("GROQ_API_KEY not found in settings.")
@@ -49,7 +38,7 @@ class ChatService:
         self, 
         message: str, 
         session_id: str, 
-        image_data: str = None, 
+        images: List[str] = [], # UPDATED: Accepts list
         language: str = "English",
         user_context: dict = None
     ) -> AsyncGenerator[str, None]:
@@ -60,21 +49,28 @@ class ChatService:
         is_vision_request = False
         full_ai_response = ""
 
-        # --- HELPER: Use Raw Message (Adaptive Strategy) ---
         user_message_content = message
 
-        # --- 1. VISION PATH ---
-        if image_data:
+        # --- 1. VISION PATH (Multiple Images) ---
+        if images and len(images) > 0:
             yield "__STATUS__:Analyzing Visual Content..."
             
             selected_model = self.llm_factory.get_vision_model()
             system_prompt = self.regulations.get_vision_prompt(language, user_context)
             is_vision_request = True
             
+            # Start with the text prompt
             content_list = [
-                {"type": "text", "text": user_message_content or "Analyze this image."},
-                {"type": "image_url", "image_url": {"url": image_data}}
+                {"type": "text", "text": user_message_content or "Analyze these images."}
             ]
+            
+            # Append all images to the content block
+            for img_data in images:
+                content_list.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_data}
+                })
+
             input_payload = [HumanMessage(content=content_list)]
 
         # --- 2. TEXT PATH ---
@@ -88,23 +84,18 @@ class ChatService:
             detected_lang = classification.get("input_language", "English")
 
             if detected_lang and detected_lang.lower() == "english":
-                # Force English if input is English
                 language = "English"
             elif detected_lang and detected_lang.lower() != language.lower():
-                # If input (e.g. Hindi) != Preference (e.g. French), switch to Input
                 language = detected_lang
 
             yield f"__STATUS__:{dynamic_status}"
 
-            # Universal Preference Handler
             if intent == 'change_preference' and pref_data and pref_data.get('key') and pref_data.get('value'):
                 key = pref_data['key'].lower()
                 value = pref_data['value']
                 
-                # Double check to prevent "None" strings
                 if value and value.lower() != "none":
                     yield f"__THOUGHT__: Changing setting '{key}' to '{value}'."
-                    
                     payload = {key: value}
                     yield f"__UPDATE_PREF__:{json.dumps(payload)}"
                     
@@ -114,19 +105,16 @@ class ChatService:
                     system_prompt = self.regulations.get_general_prompt(language, user_context)
                     input_payload = f"Confirm setting '{key}' updated to '{value}' in {language}."
                 else:
-                    # Fallback if value is missing/invalid
                     selected_model = self.llm_factory.get_tooling_model()
                     system_prompt = self.regulations.get_general_prompt(language, user_context)
                     input_payload = message
 
             else:
-                # Normal Flow
                 if language != "English":
                      yield f"__THOUGHT__: Intent '{intent.upper()}'. Responding in {language}."
                 else:
                      yield f"__THOUGHT__: Intent '{intent.upper()}'."
 
-                # --- RAG RETRIEVAL ---
                 rag_context = ""
                 try:
                     rag_context = await self.vector_store.retrieve_context(message)
@@ -135,9 +123,6 @@ class ChatService:
                 except Exception as e:
                     print(f"RAG Error: {e}") 
 
-                # --- THE FIX: MEMORY ISOLATION WRAPPER ---
-                # We wrap the memory in explicit tags and add a trailing instruction
-                # to reset the language to the current preference.
                 rag_instruction = ""
                 if rag_context:
                     rag_instruction = (
@@ -145,12 +130,9 @@ class ChatService:
                         f"{rag_context}\n"
                         f"=== [HISTORICAL MEMORY END] ===\n"
                         f"SYSTEM NOTE: The memory above is for factual context ONLY. "
-                        f"It may contain languages (like Hindi/French) that differ from the current setting. "
-                        f"IGNORE the language style of the memory. "
-                        f"You MUST write your response in {language}."
+                        f"Ignore its language style. Respond in {language}."
                     )
 
-                # Branching
                 if intent == 'search':
                     yield f"__THOUGHT__: Searching web..."
                     search_data = self.tools_service.perform_search(message)
@@ -208,9 +190,8 @@ class ChatService:
                     full_ai_response += text_chunk
                     yield text_chunk
             
-            # Save memory
+            # Save memory (skip for vision to keep vector store strictly text-based for now)
             if full_ai_response and len(full_ai_response) > 20 and not is_vision_request:
-                # We save it raw so the AI remembers what language it was spoken in originally
                 memory_text = f"User ({language}): {message}\nUltron ({language}): {full_ai_response}"
                 asyncio.create_task(self.vector_store.add_documents([memory_text]))
                 
@@ -219,7 +200,6 @@ class ChatService:
             yield f"[System Error: {str(e)}]"
 
     async def generate_chat_title(self, messages: List[Message]) -> str:
-        """Generates a concise title using the fast model."""
         try:
             text_parts = []
             for msg in messages[-4:]: 
@@ -231,7 +211,6 @@ class ChatService:
             if not conversation_summary: return "New Chat"
 
             model = self.llm_factory.get_tooling_model()
-            
             title_prompt = ChatPromptTemplate.from_messages([
                 ("system", "Generate a 3-5 word title for this chat. No quotes."),
                 ("user", "{context}")
@@ -240,7 +219,6 @@ class ChatService:
             chain = title_prompt | model
             response = await chain.ainvoke({"context": conversation_summary})
             return response.content.strip().replace('"', '')
-            
         except Exception as e:
             print(f"Error generating title: {e}")
             return "New Chat"

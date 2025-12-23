@@ -43,7 +43,7 @@
     <div class="flex items-center gap-1">
       <!-- Hidden Native Inputs -->
       <input type="file" #audioInput hidden accept="audio/*" (change)="onFileSelected($event)">
-      <input type="file" #imageInput hidden accept="image/*" (change)="onFileSelected($event)">
+      <input type="file" #imageInput hidden multiple accept="image/*" (change)="onFileSelected($event)">
       <input type="file" #docInput hidden accept=".pdf,.txt,.doc,.docx,.csv" (change)="onFileSelected($event)">
 
       <button type="button" mat-icon-button (click)="audioInput.click()" matTooltip="Upload Audio"

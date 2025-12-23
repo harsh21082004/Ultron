@@ -76,7 +76,7 @@ export class ChatEffects {
 
         console.log('Sending message with language:', language);
 
-        return this.chatApiService.sendMessageStream(action.message, action.chatId, action.image, language, userContext).pipe(
+        return this.chatApiService.sendMessageStream(action.message, action.chatId, action.base64Files, language, userContext).pipe(
           map(event => {
             if (event.type === 'update_pref') {
               try {

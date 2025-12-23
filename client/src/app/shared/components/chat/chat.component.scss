@@ -1,6 +1,4 @@
-@use '@angular/material' as mat;
-
-
+@use "@angular/material" as mat;
 
 .chat {
   border-top-left-radius: 20px;
@@ -16,13 +14,12 @@
   top: 10px;
 }
 
-.user-bubble{
+.user-bubble {
   background-color: var(--mat-menu-container-color);
   border-bottom-left-radius: 20px;
   border-top-left-radius: 20px;
   border-bottom-right-radius: 20px;
   box-shadow: 0 -4px 20px rgb(0 0 0 / 19%);
-
 }
 
 .chat-input-content {
@@ -30,34 +27,33 @@
   box-shadow: 0 0 5px grey;
   height: 100px;
   min-height: 100px; /* MODIFIED: Was height: 100px */
-  height: auto;       /* Allow form to grow */
+  height: auto; /* Allow form to grow */
   display: flex;
   flex-direction: column;
-  justify-content: space-between; 
+  justify-content: space-between;
   box-sizing: border-box;
 }
 
 /* These are the new styles for the auto-growing textarea.
 */
 .auto-grow-textarea {
-  line-height: 1.5;   /* Set a consistent line-height for calculations */
+  line-height: 1.5; /* Set a consistent line-height for calculations */
   overflow-y: hidden; /* Hide scrollbar initially */
-  height: auto;       /* Start at auto height */
+  height: auto; /* Start at auto height */
   /* Set an initial height that matches one line of text + padding.
     Your textarea has py-2 (0.5rem * 2 = 1rem) + line-height (1.5rem)
     A px value is more reliable. Let's start with ~48px.
   */
-  min-height: 48px; 
+  min-height: 48px;
 }
 
 .textarea::-webkit-scrollbar {
   display: none;
 }
 
-.textarea{
+.textarea {
   font-size: 16px;
 }
-
 
 // .gradient-spinner {
 //   // Create a linear gradient as a background for the SVG stroke
@@ -73,10 +69,17 @@
 
 #spinnerGradient {
   background: #bd0058;
-  background: linear-gradient(90deg, rgba(189, 0, 88, 1) 0%, rgba(250, 100, 157, 1) 30%, rgba(213, 217, 129, 1) 50%, rgba(134, 237, 83, 1) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(189, 0, 88, 1) 0%,
+    rgba(250, 100, 157, 1) 30%,
+    rgba(213, 217, 129, 1) 50%,
+    rgba(134, 237, 83, 1) 100%
+  );
 }
 
-.action-btn, .action-btn span{
+.action-btn,
+.action-btn span {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,8 +87,11 @@
   height: 30px;
 }
 
-.small-icon{
+.small-icon {
   font-size: 18px;
   width: 18px;
   height: 18px;
+}
+.scrollbar::-webkit-scrollbar{
+  display: none;
 }
