@@ -1,13 +1,11 @@
 # --- STAGE 1: BUILD ANGULAR FRONTEND ---
 FROM node:20-alpine as build-step
 WORKDIR /app
-# 1. Copy client package files
+# Copy client files
 COPY client/package.json client/package-lock.json ./
-# 2. Install Angular dependencies
 RUN npm install
-# 3. Copy the rest of the client code
 COPY client/ .
-# 4. Build for production
+# Build for production
 RUN npm run build -- --configuration production
 
 # --- STAGE 2: FINAL IMAGE (Node + Python) ---
@@ -21,7 +19,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # --- SETUP PYTHON (Backend) ---
-# Copy requirements (Your path is correct: fastapi-backend/requirements.txt)
 COPY fastapi-backend/requirements.txt ./fastapi-backend/
 RUN pip install --no-cache-dir -r fastapi-backend/requirements.txt
 COPY fastapi-backend/ ./fastapi-backend/
@@ -33,8 +30,8 @@ RUN npm ci --omit=dev
 COPY server/ ./
 
 # --- COPY BUILT FRONTEND ---
-# We take the built files from Stage 1 and put them in the client/dist folder
-# Node.js will serve them from here
+# We take the built files from Stage 1 and put them where Node.js can serve them
+# NOTE: Check if your angular.json output path is 'dist/ultron-ai' or just 'dist/browser'
 COPY --from=build-step /app/dist/ultron-ai ../client/dist/ultron-ai
 
 # Return to root
@@ -47,7 +44,7 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     # 1. Python Process (FIXED COMMAND)
     echo "[program:python-api]" >> /etc/supervisord.conf && \
     echo "directory=/app/fastapi-backend" >> /etc/supervisord.conf && \
-    # FIX: Changed 'app.main:app' to 'main:app' because main.py is at the root of the folder
+    # ERROR WAS HERE: Changed 'app.main:app' to 'main:app'
     echo "command=uvicorn main:app --host 0.0.0.0 --port 8000" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/dev/stdout" >> /etc/supervisord.conf && \
     echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf && \
