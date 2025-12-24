@@ -40,7 +40,7 @@ app.use(
   createProxyMiddleware({
     target: 'http://127.0.0.1:8000',
     changeOrigin: true,
-    pathRewrite: { '^/api/py': '' }, // <--- NOW ACTIVE
+    // pathRewrite: { '^/api/py': '' }, // <--- NOW ACTIVE
   })
 );
 
