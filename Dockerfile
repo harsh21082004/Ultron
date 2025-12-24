@@ -1,25 +1,25 @@
 # --- STAGE 1: BUILD ANGULAR FRONTEND ---
-FROM node:20 as build-step
+# Fix: Ensure 'AS' is uppercase to avoid warning
+FROM node:20 AS build-step
 
 WORKDIR /app
 
-# 1. Increase memory for build
+# 1. Increase memory
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# 2. Copy ONLY package.json (Ignore package-lock to prevent Windows/Linux conflict)
-COPY client/package.json ./
-
-# 3. Clean Install
-# We use 'npm install' instead of 'npm ci' so it generates a fresh Linux-compatible lockfile
-RUN npm install --legacy-peer-deps
-
-# 4. Copy Source Code
-# Since we updated .dockerignore, this will NOT overwrite node_modules anymore!
+# 2. Copy ALL client files first
 COPY client/ .
 
+# 3. CRITICAL: Delete any node_modules or lock files that came from Windows
+# This ensures we start 100% clean inside Linux
+RUN rm -rf node_modules package-lock.json dist
+
+# 4. Fresh Install (Linux Compatible)
+RUN npm install --legacy-peer-deps --force
+
 # 5. Build
-# Output is 'dist/client' based on your angular.json
-RUN npm run build -- --configuration production
+# Using npx to ensure we use the local angular cli
+RUN npx ng build --configuration production
 
 # --- STAGE 2: FINAL IMAGE (Node + Python) ---
 FROM nikolaik/python-nodejs:python3.11-nodejs20-slim
@@ -32,7 +32,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # --- SETUP PYTHON ---
-# Copy from app/requirements.txt (Your structure)
 COPY fastapi-backend/app/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
