@@ -1,24 +1,26 @@
 # --- STAGE 1: BUILD ANGULAR FRONTEND ---
-# Fix: Ensure 'AS' is uppercase to avoid warning
 FROM node:20 AS build-step
 
+# 1. Set Root Workdir
 WORKDIR /app
 
-# 1. Increase memory
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# 2. Copy the entire client folder into /app/client
+# This preserves your directory structure exactly like your laptop
+COPY client/ ./client/
 
-# 2. Copy ALL client files first
-COPY client/ .
+# 3. Enter the client folder
+WORKDIR /app/client
 
-# 3. CRITICAL: Delete any node_modules or lock files that came from Windows
-# This ensures we start 100% clean inside Linux
+# 4. CRITICAL CLEANUP
+# Delete Windows artifacts to force a clean Linux install
 RUN rm -rf node_modules package-lock.json dist
 
-# 4. Fresh Install (Linux Compatible)
+# 5. Fresh Install
+# We install INSIDE /app/client/node_modules
 RUN npm install --legacy-peer-deps --force
 
-# 5. Build
-# Using npx to ensure we use the local angular cli
+# 6. Build
+# This runs 'ng build' inside /app/client, just like you do locally
 RUN npx ng build --configuration production
 
 # --- STAGE 2: FINAL IMAGE (Node + Python) ---
@@ -34,20 +36,17 @@ RUN apt-get update && \
 # --- SETUP PYTHON ---
 COPY fastapi-backend/app/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy Python App
 COPY fastapi-backend/ ./fastapi-backend/
 
 # --- SETUP NODE ---
 COPY server/package.json ./server/
 WORKDIR /app/server
-# Fresh install for server too
 RUN npm install --omit=dev --legacy-peer-deps
 COPY server/ ./
 
 # --- COPY FRONTEND ---
-# Copy from the correct angular output folder: dist/client
-COPY --from=build-step /app/dist/client ../client/dist/client
+# FIX: Copy from the preserved structure: /app/client/dist/client
+COPY --from=build-step /app/client/dist/client ../client/dist/client
 
 # Return to root
 WORKDIR /app
