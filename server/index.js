@@ -54,16 +54,16 @@ app.use('/api/chats/share', shareRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // --- 3. SERVE ANGULAR FRONTEND ---
-const angularPath = path.join(__dirname, '../client/dist/client');
+// const angularPath = path.join(__dirname, '../client/dist/client');
 
-// Serve static files
-app.use(express.static(angularPath));
+// // Serve static files
+// app.use(express.static(angularPath));
 
-// --- 4. CATCH-ALL ROUTE (MUST BE LAST) ---
-// Send index.html for any request that didn't match an API route above
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(angularPath, 'index.html'));
-});
+// // --- 4. CATCH-ALL ROUTE (MUST BE LAST) ---
+// // Send index.html for any request that didn't match an API route above
+// app.get(/.*/, (req, res) => {
+//   res.sendFile(path.join(angularPath, 'index.html'));
+// });
 
 // Start Server
 const PORT = process.env.PORT || 3000;
