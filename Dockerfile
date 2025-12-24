@@ -1,11 +1,21 @@
 # --- STAGE 1: BUILD ANGULAR FRONTEND ---
-FROM node:20-alpine as build-step
+# CHANGED: Use standard 'node:20' (Debian) instead of 'alpine' to prevent build errors
+FROM node:20 as build-step
+
 WORKDIR /app
-# Copy client files
+
+# 1. Copy package files first
 COPY client/package.json client/package-lock.json ./
-RUN npm install
+
+# 2. Install dependencies
+# ADDED: --legacy-peer-deps to prevent crashing on version conflicts
+# ADDED: --force to ensure it works even if cache is corrupted
+RUN npm install --legacy-peer-deps --force
+
+# 3. Copy the rest of the client code
 COPY client/ .
-# Build for production
+
+# 4. Build for production
 RUN npm run build -- --configuration production
 
 # --- STAGE 2: FINAL IMAGE (Node + Python) ---
@@ -26,12 +36,12 @@ COPY fastapi-backend/ ./fastapi-backend/
 # --- SETUP NODE (Server) ---
 COPY server/package.json server/package-lock.json ./server/
 WORKDIR /app/server
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 COPY server/ ./
 
 # --- COPY BUILT FRONTEND ---
-# We take the built files from Stage 1 and put them where Node.js can serve them
-# NOTE: Check if your angular.json output path is 'dist/ultron-ai' or just 'dist/browser'
+# Ensure this path matches your angular output. 
+# If your build creates 'dist/browser', change 'dist/ultron-ai' to 'dist/browser' below.
 COPY --from=build-step /app/dist/ultron-ai ../client/dist/ultron-ai
 
 # Return to root
@@ -41,10 +51,9 @@ WORKDIR /app
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
     \
-    # 1. Python Process (FIXED COMMAND)
+    # 1. Python Process
     echo "[program:python-api]" >> /etc/supervisord.conf && \
     echo "directory=/app/fastapi-backend" >> /etc/supervisord.conf && \
-    # ERROR WAS HERE: Changed 'app.main:app' to 'main:app'
     echo "command=uvicorn main:app --host 0.0.0.0 --port 8000" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/dev/stdout" >> /etc/supervisord.conf && \
     echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf && \
