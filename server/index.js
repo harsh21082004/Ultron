@@ -27,22 +27,30 @@ const corsOptions = {
     credentials: true,
 };
 app.use(cors(corsOptions));
+
+app.use('/api/py', createProxyMiddleware({
+    target: 'http://127.0.0.1:8000', // Point to backend root
+    changeOrigin: true,
+    
+    // THE FIX: Express "ate" the prefix, so we add it back manually here.
+    // This turns "/chat/stream" back into "/api/py/chat/stream"
+    pathRewrite: {
+        '^/': '/api/py/' 
+    },
+
+    // DEBUG: Let's confirm it's working
+    onProxyReq: (proxyReq, req, res) => {
+        console.log(`[Proxy] Forwarding to: http://127.0.0.1:8000/api/py${req.url}`);
+    }
+}));
+
+
 app.use(express.json());
 
 // Passport
 app.use(passport.initialize());
 require('./config/passport.config');
 
-// --- 1. PYTHON PROXY ---
-// Send /api/py requests to the Python container
-app.use(
-  '/api/py',
-  createProxyMiddleware({
-    target: 'http://127.0.0.1:8000',
-    changeOrigin: true,
-    // pathRewrite: { '^/api/py': '' }, // <--- NOW ACTIVE
-  })
-);
 
 // --- 2. NODE API ROUTES (MUST BE BEFORE ANGULAR) ---
 // FIXED: Moved these UP so they aren't blocked by the catch-all

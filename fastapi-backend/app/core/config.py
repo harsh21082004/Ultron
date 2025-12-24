@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # --- CORS Config ---
     # Inside fastapi-backend/.env
-    CORS_ORIGINS: List[str] = ["https://ultron-ai.me", "http://localhost:4200"]
+    CORS_ORIGINS: List[str] = ["https://ultron-ai.me", "http://localhost:4200", "http://localhost:3000"]
 
     # --- Pydantic Settings Config ---
     # This tells pydantic-settings to load from a .env file

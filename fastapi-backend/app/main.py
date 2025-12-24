@@ -39,7 +39,7 @@ app.include_router(api_router, prefix=settings.API_PREFIX)
 
 # --- Root Endpoint ---
 
-@app.get("/", response_model=RootResponse, tags=["Root"])
+@app.get("/api/py", response_model=RootResponse, tags=["Root"])
 async def read_root() -> RootResponse:
     """
     A simple root endpoint to confirm the API is running.
