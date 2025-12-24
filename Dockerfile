@@ -19,8 +19,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # --- SETUP PYTHON (Backend) ---
-COPY fastapi-backend/requirements.txt ./fastapi-backend/
-RUN pip install --no-cache-dir -r fastapi-backend/requirements.txt
+COPY fastapi-backend/app/requirements.txt ./fastapi-backend/
+RUN pip install --no-cache-dir -r fastapi-backend/app/requirements.txt
 COPY fastapi-backend/ ./fastapi-backend/
 
 # --- SETUP NODE (Server) ---
