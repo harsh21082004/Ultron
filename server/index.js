@@ -55,7 +55,7 @@ app.use('/api/chats/share', shareRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // --- 3. SERVE ANGULAR FRONTEND ---
-const angularPath = path.join(__dirname, '../client/dist/client');
+const angularPath = path.join(__dirname, '../client/dist/client/browser');
 
 // Serve static files
 app.use(express.static(angularPath));
