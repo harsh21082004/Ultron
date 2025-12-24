@@ -46,7 +46,8 @@ COPY server/ ./
 
 # --- COPY FRONTEND ---
 # FIX: Copy from the preserved structure: /app/client/dist/client
-COPY --from=build-step /app/client/dist/client ../client/dist/client
+WORKDIR /app
+COPY --from=build-step /app/client/dist/client /app/client/dist/client
 
 # Return to root
 WORKDIR /app
