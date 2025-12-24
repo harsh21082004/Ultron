@@ -318,7 +318,6 @@ export class SettingsDialogComponent implements OnInit {
           // Assuming response structure: { files: [ { url: '...' } ] }
           if (response.files && response.files.length > 0) {
              this.editData.profilePic = response.files[0].url;
-             console.log('Upload success:', this.editData.profilePic);
           }
           this.isUploading.set(false); // Stop Spinner
         },

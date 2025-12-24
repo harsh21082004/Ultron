@@ -74,15 +74,12 @@ export class ChatEffects {
             preferences: user.preferences
         } : null;
 
-        console.log('Sending message with language:', language);
-
         return this.chatApiService.sendMessageStream(action.message, action.chatId, action.base64Files, language, userContext).pipe(
           map(event => {
             if (event.type === 'update_pref') {
               try {
                 // Parse: { "language": "Hindi" } or { "theme": "dark" }
                 const updateData = JSON.parse(event.value);
-                console.log('[Ultron] Auto-updating preferences:', updateData);
 
                 // 1. Separate Root Props (name) from Preferences (language, theme)
                 const rootUpdates: any = {};
@@ -324,7 +321,6 @@ export class ChatEffects {
       ofType(ChatPageActions.shareChat),
       switchMap(action =>
         this.chatDbService.createShareLink(action.chatId).pipe(
-          tap(res => console.log("Share link created:", res)),
           map(res => ChatApiActions.shareChatSuccess({ shareId: res.shareId, shareUrl: res.shareUrl })),
           catchError(err => of(ChatApiActions.shareChatFailure({ error: err.message ?? 'Share link creation failed' })))
         )
@@ -338,7 +334,6 @@ export class ChatEffects {
       ofType(ChatPageActions.loadSharedChat),
       switchMap(action =>
         this.chatDbService.getSharedPreview(action.shareId).pipe(
-          tap(res => console.log("Shared chat preview loaded:", res)),
           map(res => ChatApiActions.loadSharedChatSuccess({ title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId })),
           catchError(err => of(ChatApiActions.loadSharedChatFailure({ error: err.message ?? 'Importing shared chat failed' })))
         )
@@ -356,7 +351,6 @@ export class ChatEffects {
         }
         return this.chatDbService.importSharedChat(action.shareId).pipe(
           tap(res => {
-            console.log("Shared chat imported, new chat ID:", res.chatId);
             this.router.navigate(['/chat', res.chatId]);
           }),
           map(res => ChatApiActions.saveSharedConversationSuccess({ chatId: res.chatId })),

@@ -58,8 +58,6 @@ exports.getSharedPreview = async (req, res) => {
       return res.status(404).json({ message: 'Shared chat not found or expired' });
     }
 
-    console.log('Shared chat found:', sharedChat)
-
     res.json({
       title: sharedChat.title,
       messages: sharedChat.messages,

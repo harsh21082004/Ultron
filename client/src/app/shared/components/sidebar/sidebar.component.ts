@@ -90,7 +90,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.userSubscription = this.user$.subscribe(user => {
       if (user?._id) {
         // UPDATED: Use Page Action
-        console.log('Fetching chats for user:', user._id)
         this.store.dispatch(ChatPageActions.getAllChats({ userId: user._id }));
       }
     });

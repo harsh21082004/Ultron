@@ -152,7 +152,6 @@ export class AuthEffects {
       ofType(AuthActions.updateUserPreferences),
       switchMap(action =>
         this.authService.updateUserPreferences(action.preferences).pipe(
-          tap(res => console.log('Preferences update response:', res)),
           map(response => {
             this.snackBar.open('Preferences updated successfully', 'Close', { duration: 3000 });
             return AuthApiActions.updateUserPreferencesSuccess({ user: response.user });

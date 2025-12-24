@@ -134,8 +134,6 @@ const updateProfile = async (req, res) => {
     const { name, profilePic, preferences } = req.body;
     const userId = req.user.id;
 
-    console.log(req.body)
-
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -144,8 +142,6 @@ const updateProfile = async (req, res) => {
 
     // Update nested preferences safely
     Object.assign(user.preferences, preferences);
-
-    console.log('Updated preferences:', user.preferences);
 
 
     await user.save();
@@ -213,12 +209,8 @@ const updatePreferences = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    console.log('Current preferences:', user.preferences, preferences)
-
     // Update preferences
     Object.assign(user.preferences, preferences);
-
-    console.log('Updated preferences:', user.preferences);
 
     await user.save();
 

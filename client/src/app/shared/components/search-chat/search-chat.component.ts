@@ -57,7 +57,6 @@ export class SearchChat implements OnInit {
       if (query && query.trim().length > 0) {
         // UPDATED: Dispatch Page Action
         this.store.dispatch(ChatPageActions.searchChats({ query }));
-        this.searchResults$.subscribe(results => { console.log('Search Results:', results); });
       } else {
         // Clear results if query is empty
         // We reuse the API Success action to reset the list to empty locally

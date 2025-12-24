@@ -58,8 +58,6 @@ export class ChatApiService {
           images: images // Send array of base64 strings
       };
 
-      console.log(images)
-
       fetch(`${this.apiUrl}/stream`, {
         method: 'POST',
         headers: this.getFetchAuthHeaders(),
