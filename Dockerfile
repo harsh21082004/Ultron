@@ -52,6 +52,7 @@ COPY --from=build-step /app/client/dist/client ../client/dist/client
 WORKDIR /app
 
 # --- CONFIGURATION ---
+# --- CONFIGURATION ---
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
     \
@@ -61,13 +62,17 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "command=uvicorn app.main:app --host 0.0.0.0 --port 8000" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/dev/stdout" >> /etc/supervisord.conf && \
     echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/dev/stderr" >> /etc/supervisord.conf && \
+    echo "stderr_logfile_maxbytes=0" >> /etc/supervisord.conf && \
     \
     # Node Config
     echo "[program:node-api]" >> /etc/supervisord.conf && \
     echo "directory=/app/server" >> /etc/supervisord.conf && \
     echo "command=node index.js" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/dev/stdout" >> /etc/supervisord.conf && \
-    echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf
+    echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf && \
+    echo "stderr_logfile=/dev/stderr" >> /etc/supervisord.conf && \
+    echo "stderr_logfile_maxbytes=0" >> /etc/supervisord.conf
 
 EXPOSE 80 3000 8000
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
