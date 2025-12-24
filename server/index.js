@@ -30,7 +30,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- Passport Initialization ---
-// This must come before your routes are defined.
 app.use(passport.initialize());
 // Import the passport config file to execute the strategy setup.
 require('./config/passport.config'); 
