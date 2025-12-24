@@ -1,21 +1,16 @@
 # --- STAGE 1: BUILD ANGULAR FRONTEND ---
-# CHANGED: Use standard 'node:20' (Debian) instead of 'alpine' to prevent build errors
 FROM node:20 as build-step
 
 WORKDIR /app
 
-# 1. Copy package files first
+# 1. Copy package files
 COPY client/package.json client/package-lock.json ./
 
-# 2. Install dependencies
-# ADDED: --legacy-peer-deps to prevent crashing on version conflicts
-# ADDED: --force to ensure it works even if cache is corrupted
+# 2. Install dependencies (Force used to ignore legacy conflicts)
 RUN npm install --legacy-peer-deps --force
 
-# 3. Copy the rest of the client code
+# 3. Copy client code & Build
 COPY client/ .
-
-# 4. Build for production
 RUN npm run build -- --configuration production
 
 # --- STAGE 2: FINAL IMAGE (Node + Python) ---
@@ -29,8 +24,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # --- SETUP PYTHON (Backend) ---
-COPY fastapi-backend/app/requirements.txt ./fastapi-backend/
-RUN pip install --no-cache-dir -r fastapi-backend/app/requirements.txt
+# FIX: Copy requirements to the root temporarily to avoid path confusion
+COPY fastapi-backend/app/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Now copy the source code structure
 COPY fastapi-backend/ ./fastapi-backend/
 
 # --- SETUP NODE (Server) ---
@@ -40,8 +38,7 @@ RUN npm ci --omit=dev --legacy-peer-deps
 COPY server/ ./
 
 # --- COPY BUILT FRONTEND ---
-# Ensure this path matches your angular output. 
-# If your build creates 'dist/browser', change 'dist/ultron-ai' to 'dist/browser' below.
+# Ensure this output path matches your angular.json (dist/ultron-ai vs dist/browser)
 COPY --from=build-step /app/dist/ultron-ai ../client/dist/ultron-ai
 
 # Return to root
@@ -54,7 +51,9 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     # 1. Python Process
     echo "[program:python-api]" >> /etc/supervisord.conf && \
     echo "directory=/app/fastapi-backend" >> /etc/supervisord.conf && \
-    echo "command=uvicorn main:app --host 0.0.0.0 --port 8000" >> /etc/supervisord.conf && \
+    # FIX: Since main.py is likely inside 'app' folder based on your req.txt path
+    # We use 'app.main:app' to tell uvicorn to look inside the app folder
+    echo "command=uvicorn app.main:app --host 0.0.0.0 --port 8000" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/dev/stdout" >> /etc/supervisord.conf && \
     echo "stdout_logfile_maxbytes=0" >> /etc/supervisord.conf && \
     \
