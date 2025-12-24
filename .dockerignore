@@ -1,7 +1,15 @@
-node_modules
+# Ignore Git and Environment secrets
 .git
 .env
 .vscode
+
+# Ignore ALL node_modules from everywhere
+node_modules
 server/node_modules
+client/node_modules
 fastapi-backend/venv
-# client/   <-- DELETE THIS LINE IF IT EXISTS
+fastapi-backend/__pycache__
+
+# Ignore build artifacts
+client/dist
+server/dist
