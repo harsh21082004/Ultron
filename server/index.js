@@ -9,6 +9,7 @@ const shareRoutes = require('./routes/share.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const { notFound, errorHandler } = require('./middlewares/error.middleware');
 const passport = require('passport');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 
 connectDB();
@@ -34,16 +35,34 @@ app.use(passport.initialize());
 // Import the passport config file to execute the strategy setup.
 require('./config/passport.config'); 
 
+// 1. --- PYTHON PROXY (Must be BEFORE the Angular catch-all) ---
+// Any request starting with /api/py gets sent to the Python backend on port 8000
+app.use(
+  '/api/py',
+  createProxyMiddleware({
+    target: 'http://127.0.0.1:8000', // Python is running locally on port 8000
+    changeOrigin: true,
+    // OPTIONAL: If your Python code expects "/chat" instead of "/api/py/chat",
+    // uncomment the line below to remove the "/api/py" prefix before sending.
+    // pathRewrite: { '^/api/py': '' }, 
+  })
+);
+
 const angularPath = path.join(__dirname, '../client/dist/client');
+
+// Serve static files (JS, CSS, Images)
+app.use(express.static(angularPath));
+
+// 4. --- CATCH-ALL ROUTE ---
+// If it's not an API call, send the Angular index.html
+// This allows Angular's internal routing (e.g. /login, /dashboard) to work
+app.get('*', (req, res) => {
+  res.sendFile(path.join(angularPath, 'index.html'));
+});
 
 // TIWARI JI: This route now handles both '/' (Local) and '/api' (Vercel)
 app.get(['/api'], (req, res) => {
     res.send('API is running...');
-});
-
-// 2. Catch-all: Send index.html for any request that isn't an API call
-app.get('*', (req, res) => {
-    res.sendFile(path.join(angularPath, 'index.html'));
 });
 
 app.use('/api/auth', authRoutes);
