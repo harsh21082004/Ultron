@@ -34,9 +34,16 @@ app.use(passport.initialize());
 // Import the passport config file to execute the strategy setup.
 require('./config/passport.config'); 
 
+const angularPath = path.join(__dirname, '../client/dist/client');
+
 // TIWARI JI: This route now handles both '/' (Local) and '/api' (Vercel)
-app.get(['/', '/api'], (req, res) => {
+app.get(['/api'], (req, res) => {
     res.send('API is running...');
+});
+
+// 2. Catch-all: Send index.html for any request that isn't an API call
+app.get('*', (req, res) => {
+    res.sendFile(path.join(angularPath, 'index.html'));
 });
 
 app.use('/api/auth', authRoutes);
