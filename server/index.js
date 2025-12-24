@@ -2,17 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path'); // <--- FIXED: Added missing import
+dotenv.config();
 const passport = require('passport');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Configs & Routes
-dotenv.config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
 const chatRoutes = require('./routes/chat.routes');
 const shareRoutes = require('./routes/share.routes');
 const uploadRoutes = require('./routes/upload.routes');
-const { notFound, errorHandler } = require('./middlewares/error.middleware');
 
 // Connect to Database
 connectDB();
@@ -62,13 +61,9 @@ app.use(express.static(angularPath));
 
 // --- 4. CATCH-ALL ROUTE (MUST BE LAST) ---
 // Send index.html for any request that didn't match an API route above
-app.get('*', (req, res) => {
-    res.sendFile(path.join(angularPath, 'index.html'));
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(angularPath, 'index.html'));
 });
-
-// Error Handlers
-app.use(notFound);
-app.use(errorHandler);
 
 // Start Server
 const PORT = process.env.PORT || 3000;
