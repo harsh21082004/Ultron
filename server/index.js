@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path'); // <--- FIXED: Added missing import
+const fs = require('fs'); 
 dotenv.config();
 const passport = require('passport');
 const { createProxyMiddleware } = require('http-proxy-middleware');
@@ -64,6 +65,34 @@ app.use(express.static(angularPath));
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(angularPath, 'index.html'));
 });
+
+try {
+    console.log("========================================");
+    console.log("--> DEBUG: FILE SYSTEM CHECK");
+    
+    // 1. Check if the folder we are pointing to exists
+    const currentPath = path.join(__dirname, '../client/dist/client');
+    console.log(`--> Checking Path: ${currentPath}`);
+    
+    if (fs.existsSync(currentPath)) {
+        console.log("--> Folder EXISTS. Contents:");
+        console.log(fs.readdirSync(currentPath)); // Prints list of files
+    } else {
+        console.log("--> Folder NOT FOUND.");
+        // Check the parent folder to see what IS there
+        const parentPath = path.join(__dirname, '../client/dist');
+        if (fs.existsSync(parentPath)) {
+            console.log(`--> Parent (../client/dist) Contents:`);
+            console.log(fs.readdirSync(parentPath));
+        } else {
+            console.log("--> Even ../client/dist is missing!");
+            console.log("--> Root /app/client contents:", fs.readdirSync(path.join(__dirname, '../client')));
+        }
+    }
+    console.log("========================================");
+} catch (e) {
+    console.log("--> DEBUG ERROR:", e.message);
+}
 
 // Start Server
 const PORT = process.env.PORT || 3000;
