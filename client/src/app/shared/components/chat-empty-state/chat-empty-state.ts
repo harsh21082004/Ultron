@@ -9,7 +9,7 @@ import { User } from '../../models/user.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col items-center justify-center h-full text-center">
-      <img src="assets/images/ultron.gif" alt="Ultron" [ngClass]="isMobileView ? 'w-14' : 'w-24'">
+      <img src="assets/images/ultron.gif" loading="lazy" width="20" height="20" alt="Ultron" [ngClass]="isMobileView ? 'w-14' : 'w-24'">
       
       @if (user) {
         <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-xl' : 'text-4xl'">

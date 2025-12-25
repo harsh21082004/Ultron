@@ -23,6 +23,7 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/assets",
+              "src/robots.txt",
               {
                 "glob": "**/*",
                 "input": "public"
@@ -91,6 +92,7 @@
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
+              "src/robots.txt",
               {
                 "glob": "**/*",
                 "input": "public"

@@ -92,7 +92,7 @@ import { FileUploadService } from '../../../core/services/file-upload.service'; 
                 <div class="flex flex-col gap-6 items-center">
                   
                   <div class="relative group cursor-pointer" (click)="fileInput.click()">
-                    <img [src]="editData.profilePic || 'assets/images/profile.png'" 
+                    <img height="20" width="20" [src]="editData.profilePic || 'assets/images/profile.png'" 
                          class="w-28 h-28 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 shadow-md group-hover:opacity-80 transition-opacity">
                     
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

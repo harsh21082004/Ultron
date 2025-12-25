@@ -31,7 +31,7 @@
                 @if (block.type === 'image_url') {
                 <div
                   class="relative group/image overflow-hidden rounded-xl border border-black/10 dark:border-white/10 shadow-sm cursor-pointer hover:opacity-95 transition-all min-w-[120px] min-h-[120px] max-w-[200px] max-h-[200px] aspect-square">
-                  <img [src]="block.value" class="w-full h-full object-cover" loading="lazy"
+                  <img [src]="block.value" class="w-full h-full object-cover" width="20" height="20" loading="lazy"
                     alt="User attachment">
                 </div>
                 }
@@ -70,7 +70,7 @@
                     </span>
                   </div>
                   }
-                  <img src="assets/images/logo.svg" class="w-6 h-6 absolute top-2 left-2" alt="loading">
+                  <img src="assets/images/logo.svg" width="20" height="20" class="w-6 h-6 absolute top-2 left-2" loading="lazy" alt="loading">
                 </div>
               </span>
               @if(!message.isStreaming){
@@ -112,8 +112,8 @@
                 <a [href]="source.uri" target="_blank" rel="noopener noreferrer"
                   class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors group/source no-underline">
                   <img [src]="source.icon || 'https://www.google.com/s2/favicons?domain=' + source.uri"
-                    class="w-4 h-4 rounded-sm opacity-70 group-hover/source:opacity-100" alt=""
-                    onerror="this.style.display='none'">
+                    class="w-4 h-4 rounded-sm opacity-70 group-hover/source:opacity-100" alt="favicons"
+                    onerror="this.style.display='none'" loading="lazy" width="20" height="20">
                   <div class="flex flex-col min-w-0">
                     <span class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate w-full">{{ source.title
                       }}</span>
@@ -155,7 +155,7 @@
     <div class="w-full max-w-4xl px-4 flex flex-col gap-6">
       @if (messages.length === 0 && !(isLoading$ | async)) {
       <div class="flex flex-col items-center justify-center text-center animate-fade-in">
-        <img src="assets/images/ultron.gif" alt="Ultron" [ngClass]="isMobileView ? 'w-16' : 'w-24'" class="mb-4">
+        <img src="assets/images/ultron.gif" width="20" height="20" loading="lazy" alt="Ultron" [ngClass]="isMobileView ? 'w-16' : 'w-24'" class="mb-4">
         <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-2xl' : 'text-4xl'">
           Good Evening{{ (user$ | async)?.name ? ', ' + (user$ | async)?.name : '' }}.
         </h1>

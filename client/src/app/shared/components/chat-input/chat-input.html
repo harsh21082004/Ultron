@@ -90,13 +90,13 @@
       <!-- Send / Stop Button -->
       @if (isStreaming) {
         <button type="button" mat-mini-fab (click)="onStop()" matTooltip="Stop generating" class="!bg-red-500 !rounded-full !cursor-pointer !hover:bg-red-600 !dark:hover:bg-red-700">
-          <img src="assets/images/stop.svg" class="w-4 h-4 dark:invert-0 invert" alt="stop">
+          <img src="assets/images/stop.svg" height="20" width="20" class="w-4 h-4 dark:invert-0 invert" alt="stop">
         </button>
       } @else {
         <button type="submit" mat-mini-fab class="!rounded-full !cursor-pointer !hover:bg-black/5 !dark:hover:bg-white/10"
             [disabled]="!chatForm.value.message?.trim() && files.length === 0"
             aria-label="Send message">
-            <img src="assets/images/send.svg" class="dark:invert-0 invert" alt="send">
+            <img src="assets/images/send.svg" height="20" width="20" class="dark:invert-0 invert" alt="send">
         </button>
       }
     </div>

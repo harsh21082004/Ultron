@@ -13,7 +13,7 @@
   }
 
   <div class="logo cursor-pointer" routerLink="/">
-    <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo">
+    <img src="assets/images/Ultron-logo.svg" class="h-[50%]" alt="logo" height="20" width="20">
     <span class="text-xl">Ultron</span>
   </div>
 
@@ -60,7 +60,7 @@
       @if (user$ | async; as user) {
         <button [matMenuTriggerFor]="profile" matButton class="p-1">
           <div class="relative p-2 rounded-md w-full flex items-center gap-3 cursor-pointer">
-            <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
+            <img height="20" width="20" [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-8 h-8 rounded-full"
               alt="User" referrerpolicy="no-referrer" />
             <div class="nav-text">
               <p class="font-medium">{{ user.name }}</p>
@@ -72,7 +72,7 @@
           <div class="flex flex-col justify-start items-center">
             <span>{{user.email}}</span>
             <div class="relative p-2 mt-5 rounded-md w-full flex flex-col items-center gap-3">
-              <img [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
+              <img height="20" width="20" [src]="user.profilePic ? user.profilePic : 'assets/images/profile.png'" class="w-20 h-20 rounded-full"
                 alt="User" referrerpolicy="no-referrer" loading="lazy" />
               <div class="nav-text mt-2 mb-4">
                 <p class="text-xl">Hi, {{ user.name.split(" ")[0] }}!</p>
