@@ -4,7 +4,6 @@ import { Observable } from 'rxjs';
 import { ChatMessage } from '../../store/chat/chat.state';
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
 const environment = {
   fastApiUrl: isLocal ? 'http://localhost:8000/api/py' : '/api/py', 
   apiUrl: '/api'
@@ -15,33 +14,25 @@ export interface StreamEvent {
   value: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ChatApiService {
   private http = inject(HttpClient);
   private apiUrl: string = `${environment.fastApiUrl}/chat`;
 
-  private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-  }
-
   private getFetchAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('token') || '';
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+  }
+  
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token');
+    return new HttpHeaders({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` });
   }
 
-  // UPDATED: Added 'language' parameter (default: 'English')
   sendMessageStream(
     message: string, 
     chatId: string, 
+    parentMessageId: string | null, // NEW param
     images: string[] = [], 
     language: string = 'English',
     userContext?: any
@@ -51,101 +42,48 @@ export class ChatApiService {
       const signal = controller.signal;
 
       const payload: any = { 
-          message, 
-          chatId, 
-          language, 
-          user_context: userContext,
-          images: images // Send array of base64 strings
+          message, chatId, parentMessageId, language, user_context: userContext, images 
       };
 
       fetch(`${this.apiUrl}/stream`, {
-        method: 'POST',
-        headers: this.getFetchAuthHeaders(),
-        body: JSON.stringify(payload),
-        signal
+        method: 'POST', headers: this.getFetchAuthHeaders(), body: JSON.stringify(payload), signal
       }).then(async response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        if (!response.body) {
-          throw new Error("No response body");
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.body) throw new Error("No response body");
 
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
         let currentTag: string | null = null;
 
         while (true) {
           const { value, done } = await reader.read();
-          if (done) {
-            subscriber.complete();
-            break;
-          }
+          if (done) { subscriber.complete(); break; }
 
-          // Robust Parsing Logic
           const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__|__UPDATE_PREF__):)/).filter(Boolean);
-
           for (const part of parts) {
             let processedPart = part;
-            
-            if (part.startsWith('__STATUS__:')) {
-              currentTag = 'status';
-              processedPart = part.replace('__STATUS__:', '');
-            } else if (part.startsWith('__UPDATE_PREF__:')) {
-               currentTag = 'update_pref';
-               processedPart = part.replace('__UPDATE_PREF__:', '');
-            } else if (part.startsWith('__THOUGHT__:')) {
-              currentTag = 'log';
-              processedPart = part.replace('__THOUGHT__:', '');
-            } else if (part.startsWith('__SOURCES__:')) {
-              currentTag = 'sources';
-              processedPart = part.replace('__SOURCES__:', '');
-            } else if (part.startsWith('__ANSWER__:')) {
-              currentTag = 'text'; 
-              processedPart = part.replace('__ANSWER__:', '');
-            }
+            if (part.startsWith('__STATUS__:')) { currentTag = 'status'; processedPart = part.replace('__STATUS__:', ''); }
+            else if (part.startsWith('__UPDATE_PREF__:')) { currentTag = 'update_pref'; processedPart = part.replace('__UPDATE_PREF__:', ''); }
+            else if (part.startsWith('__THOUGHT__:')) { currentTag = 'log'; processedPart = part.replace('__THOUGHT__:', ''); }
+            else if (part.startsWith('__SOURCES__:')) { currentTag = 'sources'; processedPart = part.replace('__SOURCES__:', ''); }
+            else if (part.startsWith('__ANSWER__:')) { currentTag = 'text'; processedPart = part.replace('__ANSWER__:', ''); }
 
             const cleanValue = processedPart; 
-
-            if (cleanValue) {
-                if (currentTag === 'status') {
-                    subscriber.next({ type: 'status', value: cleanValue.trim() });
-                } else if (currentTag === 'log') {
-                    subscriber.next({ type: 'log', value: cleanValue.trim() });
-                } else if (currentTag === 'sources') {
-                    subscriber.next({ type: 'sources', value: cleanValue.trim() });
-                }else if (currentTag === 'update_pref') {
-                    // Emit the JSON string directly
-                    subscriber.next({ type: 'update_pref', value: cleanValue.trim() });
-                } else {
-                    subscriber.next({ type: 'text', value: cleanValue });
-                }
-            }
+            if (cleanValue) subscriber.next({ type: currentTag as any, value: cleanValue });
           }
         }
       }).catch(err => {
-        if (err.name === 'AbortError') {
-          console.log('Stream stopped by user.');
-          subscriber.complete();
-        } else {
-          subscriber.error(err);
-        }
+        if (err.name !== 'AbortError') subscriber.error(err);
+        else subscriber.complete();
       });
-
       return () => controller.abort();
     });
   }
 
   generateTitle(messages: ChatMessage[]): Observable<{ title: string }> {
-    return this.http.post<{ title: string }>(`${this.apiUrl}/generate-title`,
-      { messages },
-      { headers: this.getAuthHeaders() }
-    );
+    return this.http.post<{ title: string }>(`${this.apiUrl}/generate-title`, { messages }, { headers: this.getAuthHeaders() });
   }
 
   hydrateHistory(chatId: string, messages: ChatMessage[]): Observable<any> {
-    return this.http.post(`${this.apiUrl}/hydrate-history`,
-      { chatId, messages },
-      { headers: this.getAuthHeaders() }
-    );
+    return this.http.post(`${this.apiUrl}/hydrate-history`, { chatId, messages }, { headers: this.getAuthHeaders() });
   }
 }

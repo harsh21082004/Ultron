@@ -1,42 +1,94 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
-import { ChatState } from './chat.state';
+import { ChatState, ChatMessage } from './chat.state';
 
 const selectChatState = createFeatureSelector<ChatState>('chat'); 
-
-// Private selectors (internal building blocks)
 const selectMessagesState = createSelector(selectChatState, (state) => state.messages);
 const selectAllChatsState = createSelector(selectChatState, (state) => state.chatList);
 const selectCurrentChatIdState = createSelector(selectChatState, (state) => state.currentChatId);
+const selectCurrentLeafIdState = createSelector(selectChatState, (state) => state.currentLeafId);
 
-// Exported Group
 export const ChatSelectors = {
   selectChatState,
-  
-  // Data
   selectMessages: selectMessagesState,
   selectAllChats: selectAllChatsState,
   selectCurrentChatId: selectCurrentChatIdState,
-   
-  selectCurrentChat: createSelector(
-    selectAllChatsState,
-    selectCurrentChatIdState,
-    (chats, currentChatId) => chats.find(chat => chat._id === currentChatId)
-  ),
+  selectCurrentLeafId: selectCurrentLeafIdState,
   
   selectChatTitle: createSelector(selectChatState, (state) => state.title),
   selectStreamStatus: createSelector(selectChatState, (state) => state.streamStatus),
-
-  // UI Flags
   selectIsLoading: createSelector(selectChatState, (state) => state.isLoading),
   selectIsStreaming: createSelector(selectChatState, (state) => state.isStreaming),
   selectChatError: createSelector(selectChatState, (state) => state.error),
-  
-  // Search
   selectSearchResults: createSelector(selectChatState, (state) => state.searchResults),
   selectIsSearching: createSelector(selectChatState, (state) => state.isSearching),
-  
-  // Share
   selectShareUrl: createSelector(selectChatState, (state) => state.shareUrl),
   selectShareId: createSelector(selectChatState, (state) => state.shareId),
   selectIsSharing: createSelector(selectChatState, (state) => state.isSharing),
+
+  selectCurrentChat: createSelector(
+    selectAllChatsState, selectCurrentChatIdState,
+    (chats, currentChatId) => chats.find(chat => chat._id === currentChatId)
+  ),
+
+  selectVisibleThread: createSelector(
+    selectMessagesState,
+    selectCurrentLeafIdState,
+    (messages, leafId) => {
+        if (!messages || messages.length === 0) return [];
+
+        const msgMap = new Map<string, ChatMessage>();
+        messages.forEach(m => msgMap.set(m._id, m));
+
+        let currentId = leafId;
+        if (!currentId) {
+             currentId = messages[messages.length - 1]._id;
+        }
+
+        const thread: ChatMessage[] = [];
+        let current = msgMap.get(currentId!);
+        let safety = 0;
+        
+        while (current && safety < 10000) {
+            thread.unshift(current);
+            if (!current.parentMessageId) break; 
+            current = msgMap.get(current.parentMessageId);
+            safety++;
+        }
+        return thread;
+    }
+  ),
+
+  // --- HELPER: Siblings for UI Arrows ---
+  selectMessageSiblings: (messageId: string) => createSelector(
+    selectMessagesState,
+    (messages) => {
+        const msg = messages.find(m => m._id === messageId);
+        if (!msg) return { count: 1, index: 1, ids: [messageId] };
+
+        // CASE 1: ROOT MESSAGE (No Parent)
+        if (msg.parentMessageId === null) {
+            // Find all other messages that are also roots
+            const rootSiblings = messages
+                .filter(m => m.parentMessageId === null && m.sender === msg.sender)
+                .map(m => m._id);
+            
+            return {
+                count: rootSiblings.length,
+                index: rootSiblings.indexOf(messageId) + 1,
+                ids: rootSiblings
+            };
+        }
+
+        // CASE 2: NORMAL MESSAGE
+        const parent = messages.find(p => p._id === msg.parentMessageId);
+        if (!parent) return { count: 1, index: 1, ids: [messageId] };
+
+        const siblings = parent.childrenIds;
+        return {
+            count: siblings.length,
+            index: siblings.indexOf(messageId) + 1,
+            ids: siblings
+        };
+    }
+  ),
 };

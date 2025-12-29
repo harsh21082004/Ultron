@@ -23,10 +23,8 @@ import { AudioApiService } from '../../core/services/audio-api.service';
 import { VisionApiService } from '../../core/services/vision-api.service';
 import { TranslateApiService } from '../../core/services/translate-api.service';
 
-// UPDATED: Auth Selectors
+// Selectors & Actions
 import { selectAuthUser } from '../auth/auth.selectors';
-
-// UPDATED: Chat Grouped Actions & Selectors
 import { ChatPageActions, ChatApiActions } from './chat.actions';
 import { ChatSelectors } from './chat.selectors';
 import { AuthActions } from '../auth/auth.actions';
@@ -42,100 +40,58 @@ export class ChatEffects {
   private translateApi = inject(TranslateApiService);
   private router = inject(Router);
 
-  // 1. Load History (Triggered by entering page)
+  // 1. Load History
   loadHistory$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.enterChat),
       switchMap(action =>
         this.chatDbService.getChatHistory(action.chatId).pipe(
-          map(messages => ChatApiActions.loadChatHistorySuccess({ chatId: action.chatId, messages })),
+          map(res => ChatApiActions.loadChatHistorySuccess({ 
+              chatId: action.chatId, 
+              messages: res.messages, 
+              currentLeafId: res.currentLeafId 
+          })),
           catchError(error => of(ChatApiActions.loadChatHistoryFailure({ chatId: action.chatId, error: error.message })))
         )
       )
     );
   });
 
-  // 2. Send Message & Handle Stream (WITH LANGUAGE SUPPORT)
+  // 2. Send Message (Stream)
   sendMessage$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.sendMessage),
-      withLatestFrom(this.store.select(selectAuthUser)), // GRAB USER
+      withLatestFrom(this.store.select(selectAuthUser)),
       switchMap(([action, user]) => {
-
-        // Extract language or default to English
-        // NOTE: Ensure your User interface has 'preferences.language' or adjust path
         const language = user?.preferences?.language || 'English';
+        const userContext = user ? { name: user.name, preferences: user.preferences } : null;
 
-        // PREPARE CONTEXT
-        // We strip the token to send only relevant info to Python
-        const userContext = user ? {
-            name: user.name,
-            email: user.email,
-            preferences: user.preferences
-        } : null;
-
-        return this.chatApiService.sendMessageStream(action.message, action.chatId, action.base64Files, language, userContext).pipe(
-          map(event => {
-            if (event.type === 'update_pref') {
-              try {
-                // Parse: { "language": "Hindi" } or { "theme": "dark" }
-                const updateData = JSON.parse(event.value);
-
-                // 1. Separate Root Props (name) from Preferences (language, theme)
-                const rootUpdates: any = {};
-                const prefUpdates: any = {};
-
-                Object.keys(updateData).forEach(key => {
-                  if (key === 'name' || key === 'profilePic') {
-                    rootUpdates[key] = updateData[key];
-                  } else {
-                    // Assume everything else is a preference
-                    prefUpdates[key] = updateData[key];
-                  }
-                });
-
-                // 2. Dispatch Update Action
-                // Note: We merge with existing user prefs handled by the backend/reducer logic usually,
-                // but AuthActions.updateUserProfile expects a partial User object.
-                const payload: any = { ...rootUpdates };
-                if (Object.keys(prefUpdates).length > 0) {
-                  payload.preferences = prefUpdates;
-                  // Note: Your component uses logic to merge preferences. 
-                  // If your backend 'updateProfile' replaces the whole pref object, 
-                  // you might need to pass { preferences: { ...user.preferences, ...prefUpdates } }
-                  // But usually partial updates are better handled on backend.
-                  // For now, let's assume backend/reducer merges generic keys.
-                }
-
-                return AuthActions.updateUserProfile({ data: payload });
-
-              } catch (e) {
-                console.error("Failed to parse update preference payload", e);
-                return ChatApiActions.addStreamLog({ log: 'Failed to update settings.' });
-              }
-            }
-            // A. STATUS UPDATE (e.g. "Thinking...")
-            if (event.type === 'status') {
-              return ChatApiActions.updateStreamStatus({ status: event.value });
-            }
-            // B. LOG / REASONING (e.g. "Identifying Intent...")
-            else if (event.type === 'log') {
-              return ChatApiActions.addStreamLog({ log: event.value });
-            }
-            // C. SOURCES (JSON string)
-            else if (event.type === 'sources') {
-              try {
-                const sources = JSON.parse(event.value);
-                return ChatApiActions.updateStreamSources({ sources });
-              } catch (e) {
-                console.warn('Failed to parse sources JSON:', event.value);
-                return ChatApiActions.addStreamLog({ log: 'Received sources but failed to parse.' });
-              }
-            }
-            // D. TEXT CHUNK (The answer)
-            else {
-              return ChatApiActions.receiveStreamChunk({ chunk: event.value });
-            }
+        return this.chatApiService.sendMessageStream(
+            action.message, action.chatId, action.parentMessageId, action.base64Files, language, userContext
+        ).pipe(
+          map(event => { 
+             if (event.type === 'text') return ChatApiActions.receiveStreamChunk({ chunk: event.value });
+             if (event.type === 'status') return ChatApiActions.updateStreamStatus({ status: event.value });
+             if (event.type === 'log') return ChatApiActions.addStreamLog({ log: event.value });
+             if (event.type === 'sources') {
+                 try { return ChatApiActions.updateStreamSources({ sources: JSON.parse(event.value) }); }
+                 catch { return ChatApiActions.addStreamLog({ log: 'Error parsing sources' }); }
+             }
+             if (event.type === 'update_pref') { 
+                 try {
+                    const updateData = JSON.parse(event.value);
+                    const rootUpdates: any = {};
+                    const prefUpdates: any = {};
+                    Object.keys(updateData).forEach(key => {
+                        if (key === 'name' || key === 'profilePic') rootUpdates[key] = updateData[key];
+                        else prefUpdates[key] = updateData[key];
+                    });
+                    const payload: any = { ...rootUpdates };
+                    if (Object.keys(prefUpdates).length > 0) payload.preferences = prefUpdates;
+                    return AuthActions.updateUserProfile({ data: payload });
+                 } catch { return ChatApiActions.addStreamLog({ log: 'Failed to update settings.' }); }
+             }
+             return ChatApiActions.receiveStreamChunk({ chunk: '' }); // Fallback
           }),
           takeUntil(this.actions$.pipe(ofType(ChatPageActions.stopStream))),
           endWith(ChatApiActions.streamComplete({ chatId: action.chatId })),
@@ -145,7 +101,7 @@ export class ChatEffects {
     );
   });
 
-  // 3. Signal that Stream Started (UI Spinner logic)
+  // 3. Signal Stream Started
   startStream$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.sendMessage),
@@ -153,7 +109,7 @@ export class ChatEffects {
     );
   });
 
-  // 4. Hydrate AI Memory (Context) after history load
+  // 4. Hydrate AI Memory
   hydrateAiMemory$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatApiActions.loadChatHistorySuccess),
@@ -167,56 +123,53 @@ export class ChatEffects {
     );
   });
 
-  // 5. Save Chat & Generate Title on Completion
+  // 5. Save Chat & GENERATE TITLE
   saveOnStreamComplete$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatApiActions.streamComplete),
       withLatestFrom(
-        this.store.select(ChatSelectors.selectMessages),
-        this.store.select(ChatSelectors.selectCurrentChat)
+        // We need ALL messages to save the Tree Structure to DB
+        this.store.select(ChatSelectors.selectMessages), 
+        // We need VISIBLE messages to generate a relevant Title for the current topic
+        this.store.select(ChatSelectors.selectVisibleThread), 
+        this.store.select(ChatSelectors.selectCurrentChat),
+        this.store.select(ChatSelectors.selectChatState)
       ),
-      switchMap(([action, messages, currentChat]) => {
+      switchMap(([action, allMessages, visibleMessages, currentChat, state]) => {
         const chatId = action.chatId;
+        const leafId = state.currentLeafId; // This is the REAL ID now (updated by reducer)
+        
+        const currentTitle = currentChat?.title || 'New Chat';
+        const isDefaultTitle = currentTitle === 'New Chat';
+        
+        // Only generate title if it's "New Chat" and we have at least a User+AI pair in visible thread
+        const shouldGenerateTitle = isDefaultTitle && visibleMessages.length >= 2;
 
-        if (!chatId || messages.length < 2) {
-          return of(ChatApiActions.saveChatHistoryFailure({ error: 'Missing data to save chat.' }));
-        }
-
-        // Logic: Only generate title on first exchange if title is default
-        const isFirstExchange = messages.length === 2;
-        const hasCustomTitle = currentChat?.title && currentChat.title !== 'New Chat';
-
-        // If existing conversation, just save
-        if (!isFirstExchange || hasCustomTitle) {
-          const existingTitle = currentChat?.title || 'New Chat';
-          return this.chatDbService.saveChat(chatId, messages, existingTitle).pipe(
-            map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: existingTitle })),
-            catchError(error => of(ChatApiActions.saveChatHistoryFailure({ error: error.message })))
-          );
-        }
-
-        // Generate Title (First Run)
-        return this.chatApiService.generateTitle(messages).pipe(
-          switchMap(titleResponse => {
-            const aiTitle = titleResponse.title || 'New Chat';
-            return this.chatDbService.saveChat(chatId, messages, aiTitle).pipe(
-              map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: aiTitle })),
-              catchError(error => of(ChatApiActions.saveChatHistoryFailure({ error: error.message })))
+        if (shouldGenerateTitle) {
+            // Generate Title based on what the user is currently seeing
+            return this.chatApiService.generateTitle(visibleMessages).pipe(
+                switchMap(res => {
+                    const newTitle = res.title || 'New Chat';
+                    return this.chatDbService.saveChat(chatId, allMessages, newTitle, leafId).pipe(
+                        map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle })),
+                        catchError(err => of(ChatApiActions.saveChatHistoryFailure({ error: err.message })))
+                    );
+                }),
+                // If Title Gen fails, save with default title
+                catchError(() => {
+                    return this.chatDbService.saveChat(chatId, allMessages, currentTitle, leafId).pipe(
+                        map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: currentTitle })),
+                        catchError(err => of(ChatApiActions.saveChatHistoryFailure({ error: err.message })))
+                    );
+                })
             );
-          }),
-          // Fallback if Title Gen fails: Save with default
-          catchError(titleError => {
-            console.error("Failed to generate AI title, saving with default.", titleError);
-            const firstUserMessage = messages.find(m => m.sender === 'user');
-            const firstTextContent = firstUserMessage?.content.find(c => c.type === 'text');
-            const defaultTitle = (firstTextContent?.value as string)?.substring(0, 50) || 'New Chat';
-
-            return this.chatDbService.saveChat(chatId, messages, defaultTitle).pipe(
-              map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: defaultTitle })),
-              catchError(dbError => of(ChatApiActions.saveChatHistoryFailure({ error: dbError.message })))
+        } else {
+            // Just Save (Title exists or not enough messages)
+            return this.chatDbService.saveChat(chatId, allMessages, currentTitle, leafId).pipe(
+                map(() => ChatApiActions.saveChatHistorySuccess({ chatId, newTitle: currentTitle })),
+                catchError(err => of(ChatApiActions.saveChatHistoryFailure({ error: err.message })))
             );
-          })
-        );
+        }
       })
     );
   });
@@ -230,17 +183,13 @@ export class ChatEffects {
           map(chats => ChatApiActions.getAllChatsSuccess({ chats })),
           catchError(error => of(ChatApiActions.getAllChatsFailure({ error: error.message })))
         )
-      ))
+      ));
   });
 
-  // 7. Refresh List after a Save (Title update or new chat)
+  // 7. Refresh List after Save
   refetchChatsAfterSave$ = createEffect(() => {
     return this.actions$.pipe(
-      // UPDATED: Listen to BOTH 'Save History' AND 'Save Shared Conversation'
-      ofType(
-        ChatApiActions.saveChatHistorySuccess,
-        ChatApiActions.saveSharedConversationSuccess
-      ),
+      ofType(ChatApiActions.saveChatHistorySuccess, ChatApiActions.saveSharedConversationSuccess),
       withLatestFrom(this.store.select(selectAuthUser)),
       filter(([action, user]) => !!user),
       map(([action, user]) => ChatPageActions.getAllChats({ userId: user!._id }))
@@ -276,7 +225,7 @@ export class ChatEffects {
     );
   });
 
-  // 10. Tools: Audio Transcription
+  // 10. Tools
   transcribeAudio$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.transcribeAudio),
@@ -289,7 +238,6 @@ export class ChatEffects {
     );
   });
 
-  // 11. Tools: Image Analysis
   analyzeImage$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.analyzeImage),
@@ -302,7 +250,6 @@ export class ChatEffects {
     );
   });
 
-  // 12. Tools: Translation
   translateText$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.translateText),
@@ -315,7 +262,7 @@ export class ChatEffects {
     );
   });
 
-  // 13. Sharing: Create Link
+  // 11. Sharing
   shareChat$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.shareChat),
@@ -328,27 +275,27 @@ export class ChatEffects {
     )
   })
 
-  // 14. Sharing: Load Shared Chat (Preview)
   loadSharedChat$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.loadSharedChat),
       switchMap(action =>
         this.chatDbService.getSharedPreview(action.shareId).pipe(
-          map(res => ChatApiActions.loadSharedChatSuccess({ title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId })),
+          map(res => ChatApiActions.loadSharedChatSuccess({ 
+              title: res.title, messages: res.messages, createdAt: res.createdAt, shareId: res.shareId,
+              currentLeafId: res.currentLeafId // Important for viewing correct branch
+          })),
           catchError(err => of(ChatApiActions.loadSharedChatFailure({ error: err.message ?? 'Importing shared chat failed' })))
         )
       )
     )
   })
 
-  // 15. Sharing: Import/Save to Account
   saveSharedConversation$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(ChatPageActions.saveSharedConversation),
       switchMap(action => {
-        if (!action.shareId) {
-          return of(ChatApiActions.saveSharedConversationFailure({ error: 'Share ID is required' }));
-        }
+        if (!action.shareId) return of(ChatApiActions.saveSharedConversationFailure({ error: 'Share ID is required' }));
+        
         return this.chatDbService.importSharedChat(action.shareId).pipe(
           tap(res => {
             this.router.navigate(['/chat', res.chatId]);

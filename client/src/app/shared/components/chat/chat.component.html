@@ -9,47 +9,83 @@
       @if (messages.length > 0 || (isLoading$ | async)) {
       @for (message of messages; track trackByMessage($index, message)){
 
-      <div #messageElement class="flex items-start gap-2 group" [class.justify-end]="message.sender === 'user'"
-        [class.flex-col]="message.sender === 'ai'" [class.items-start]="message.sender === 'ai'">
+      <div #messageElement class="flex items-start gap-2 group w-full" [class.justify-end]="message.sender === 'user'"
+        [class.justify-start]="message.sender === 'ai'">
 
         @if (message.sender === 'user') {
+        <div class="flex flex-col items-end max-w-[85%] w-full">
 
-        <div class="flex items-start justify-end gap-2">
-          <div class="flex-shrink-0 flex opacity-0 group-hover:opacity-100 transition-opacity pt-2 self-end">
-            <button mat-icon-button matTooltip="Edit" (click)="onEditMessage(message)" class="action-btn">
-              <mat-icon class="small-icon">edit</mat-icon>
-            </button>
-            <button mat-icon-button matTooltip="Copy" (click)="onCopyMessage(message)" class="action-btn">
-              <mat-icon class="small-icon">content_copy</mat-icon>
-            </button>
+          @if (editingMessageId === message._id) {
+          <div
+            class="w-full max-w-2xl bg-[#f4f4f4] dark:bg-[#1f2937] rounded-xl p-3 border border-blue-500/50 shadow-md animate-fade-in">
+            <textarea [(ngModel)]="editContent" appAutoGrow [appAutoGrowMaxLines]="10"
+              class="w-full bg-transparent border-none outline-none resize-none text-base text-gray-800 dark:text-gray-100 min-h-[40px]"
+              placeholder="Edit your message...">
+                    </textarea>
+            <div class="flex justify-end gap-2 mt-2">
+              <button mat-button class="!h-8 !px-3 text-xs" (click)="cancelEdit()">Cancel</button>
+              <button mat-flat-button color="primary" class="!rounded-full !px-4 !h-8 text-xs font-medium"
+                [disabled]="!editContent.trim()" (click)="saveEdit(message)">
+                Send
+              </button>
+            </div>
           </div>
-
-          <div class="flex flex-col items-end gap-1 max-w-[85%]">
-            <div class="w-full flex overflow-x-auto max-w-[65%] px-5 scrollbar">
-              <div class="flex justify-end gap-2 mb-1">
+          }
+          @else {
+          <div class="flex items-start justify-end gap-2 w-full">
+            <div class="flex flex-col items-end gap-1 overflow-hidden">
+              @if(hasImages(message)) {
+              <div class="flex flex-wrap justify-end gap-2 mb-1">
                 @for (block of message.content; track $index) {
                 @if (block.type === 'image_url') {
                 <div
-                  class="relative group/image overflow-hidden rounded-xl border border-black/10 dark:border-white/10 shadow-sm cursor-pointer hover:opacity-95 transition-all min-w-[120px] min-h-[120px] max-w-[200px] max-h-[200px] aspect-square">
-                  <img [src]="block.value" class="w-full h-full object-cover" width="20" height="20" loading="lazy"
-                    alt="User attachment">
+                  class="relative overflow-hidden rounded-xl border border-black/10 dark:border-white/10 shadow-sm w-20 h-20">
+                  <img [src]="block.value" class="w-full h-full object-cover" loading="lazy" alt="User attachment">
                 </div>
                 }
                 }
               </div>
-            </div>
+              }
 
-            @if (hasTextBlock(message)) {
-            <div class="py-2 px-4 relative user-bubble rounded-2xl rounded-tr-sm">
-              @for (block of message.content; track $index) {
-              @if (block.type === 'text') {
-              <app-content-renderer-component [content]="block.value" [sender]="message.sender" class="text-base">
-              </app-content-renderer-component>
+              @if (hasTextBlock(message)) {
+              <div class="py-2 px-4 relative user-bubble rounded-2xl rounded-tr-sm text-left">
+                @for (block of message.content; track $index) {
+                @if (block.type === 'text') {
+                <app-content-renderer-component [content]="block.value" [sender]="message.sender"
+                  class="text-base"></app-content-renderer-component>
+                }
+                }
+              </div>
               }
-              }
+            </div>
+          </div>
+
+          <div class="actions flex items-center justify-center gap-2 mt-2">
+            <div class="flex-shrink-0 flex opacity-0 group-hover:opacity-100 transition-opacity self-end">
+              <button mat-icon-button matTooltip="Edit" (click)="onEditMessage(message)" class="action-btn">
+                <mat-icon class="small-icon">edit</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Copy" (click)="onCopyMessage(message)" class="action-btn">
+                <mat-icon class="small-icon">content_copy</mat-icon>
+              </button>
+            </div>
+            @if (getSiblingInfo(message) | async; as info) {
+            @if (info.count > 1) {
+            <div class="flex items-center gap-2 text-xs font-mono text-gray-400 select-none">
+              <button mat-icon-button matTooltip="Copy" (click)="switchVersion(message, -1)" [disabled]="info.index === 1" class="action-btn disabled:opacity-30 disabled:cursor-not-allowed">
+                <mat-icon class="small-icon">arrow_back_ios</mat-icon>
+              </button>
+              <span>{{ info.index }} / {{ info.count }}</span>
+              <button mat-icon-button matTooltip="Copy" (click)="switchVersion(message, 1)" [disabled]="info.index === info.count" class="action-btn disabled:opacity-30 disabled:cursor-not-allowed">
+                <mat-icon class="small-icon">arrow_forward_ios</mat-icon>
+              </button>
             </div>
             }
+            }
           </div>
+
+
+          }
         </div>
         }
 
@@ -61,34 +97,36 @@
             <summary
               class="list-none flex items-center gap-2 cursor-pointer select-none py-1.5 px-0 w-fit rounded-md transition-colors outline-none focus:outline-none">
               <span class="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                <div class="w-10 h-10 relative">
+                <div class="w-10 h-10 relative flex items-center justify-center">
                   @if(message.isStreaming) {
-                  <div class="flex items-center justify-center gap-2">
-                    <ultron-loader-component class="flex"></ultron-loader-component>
-                    <span class="animate-pulse absolute text-nowrap left-15">
-                      {{ (streamStatus$ | async)?.current || 'Thinking...' }}
-                    </span>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <ultron-loader-component></ultron-loader-component>
                   </div>
                   }
-                  <img src="assets/images/logo.svg" width="20" height="20" class="w-6 h-6 absolute top-2 left-2" loading="lazy" alt="loading">
+                  <img src="assets/images/logo.svg" width="20" height="20" class="w-6 h-6 z-10" loading="lazy"
+                    alt="ai-logo">
                 </div>
+                @if(message.isStreaming) {
+                <span class="animate-pulse">{{ (streamStatus$ | async)?.current || 'Thinking...' }}</span>
+                }
               </span>
+
               @if(!message.isStreaming){
-              <button mat-button (click)="reasoningDetails.open = !reasoningDetails.open; $event.preventDefault()">
-                Show thinking
-                <mat-icon class="text-gray-400 !w-5 !h-5 !text-[20px] transition-transform duration-200"
+              <div class="flex items-center gap-1 text-xs text-gray-400">
+                <span>Show Process</span>
+                <mat-icon class="!w-4 !h-4 !text-[16px] transition-transform duration-200"
                   [class.rotate-180]="reasoningDetails.open">expand_more</mat-icon>
-              </button>
+              </div>
               }
             </summary>
+
             <div
               class="ml-2.5 pl-4 border-l-2 border-[#f5ebe0] dark:border-gray-700 mt-1 mb-2 animate-in fade-in slide-in-from-top-1 duration-200">
-              <div class="flex flex-col gap-2 py-1">
+              <div class="flex flex-col gap-1 py-1">
                 @for (step of message.reasoning; track $index) {
                 <div
                   class="text-[13px] leading-relaxed text-gray-600 dark:text-gray-400 font-mono tracking-wide opacity-90">
-                  {{ step }}
-                </div>
+                  {{ step }}</div>
                 }
               </div>
             </div>
@@ -98,8 +136,7 @@
           <div class="relative w-full" [ngClass]="'ai-bubble'">
             @for (block of message.content; track $index) {
             <app-content-renderer-component [content]="block.value" [sender]="message.sender" [type]="block.type"
-              class="text-base block" [sources]="message.sources">
-            </app-content-renderer-component>
+              class="text-base block" [sources]="message.sources"></app-content-renderer-component>
             }
 
             @if (message.sources && message.sources.length > 0) {
@@ -112,8 +149,8 @@
                 <a [href]="source.uri" target="_blank" rel="noopener noreferrer"
                   class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors group/source no-underline">
                   <img [src]="source.icon || 'https://www.google.com/s2/favicons?domain=' + source.uri"
-                    class="w-4 h-4 rounded-sm opacity-70 group-hover/source:opacity-100" alt="favicons"
-                    onerror="this.style.display='none'" loading="lazy" width="20" height="20">
+                    class="w-4 h-4 rounded-sm opacity-70 group-hover/source:opacity-100" alt="icon"
+                    onerror="this.style.display='none'">
                   <div class="flex flex-col min-w-0">
                     <span class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate w-full">{{ source.title
                       }}</span>
@@ -127,6 +164,19 @@
 
             @if (!(isStreaming$ | async)) {
             <div class="flex items-center gap-1 mt-3 pt-2 border-t border-[#f5ebe0] dark:border-gray-800">
+
+              @if (getSiblingInfo(message) | async; as info) {
+              @if (info.count > 1) {
+              <div class="flex items-center gap-2 mr-3 text-xs font-mono text-gray-400 select-none">
+                <button (click)="switchVersion(message, -1)" [disabled]="info.index === 1"
+                  class="hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed">&lt;</button>
+                <span>{{ info.index }}/{{ info.count }}</span>
+                <button (click)="switchVersion(message, 1)" [disabled]="info.index === info.count"
+                  class="hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed">&gt;</button>
+              </div>
+              }
+              }
+
               <button mat-icon-button class="action-btn !w-8 !h-8"><mat-icon
                   class="!w-4 !h-4 !text-[16px]">thumb_up</mat-icon></button>
               <button mat-icon-button class="action-btn !w-8 !h-8"><mat-icon
@@ -155,7 +205,8 @@
     <div class="w-full max-w-4xl px-4 flex flex-col gap-6">
       @if (messages.length === 0 && !(isLoading$ | async)) {
       <div class="flex flex-col items-center justify-center text-center animate-fade-in">
-        <img src="assets/images/ultron.gif" width="20" height="20" loading="lazy" alt="Ultron" [ngClass]="isMobileView ? 'w-16' : 'w-24'" class="mb-4">
+        <img [src]="isDarkMode() ? 'assets/images/TARS-LOGO-DARK.webp' : 'assets/images/TARS-LOGO-LIGHT.webp'"
+          width="20" height="20" class="w-26" alt="tars">
         <h1 class="font-bold text-black dark:text-white" [ngClass]="isMobileView ? 'text-2xl' : 'text-4xl'">
           Good Evening{{ (user$ | async)?.name ? ', ' + (user$ | async)?.name : '' }}.
         </h1>
@@ -165,11 +216,13 @@
       </div>
       }
 
+      @if (messages.length === 0) {
       <div class="w-full relative z-20">
         <app-chat-input [isLoading]="(isLoading$ | async) ?? false" [isStreaming]="(isStreaming$ | async) ?? false"
           (sendMessage)="handleSendMessage($event)" (stopGeneration)="handleStopGeneration()">
         </app-chat-input>
       </div>
+      }
 
       @if (messages.length === 0 && !(isLoading$ | async)) {
       <div class="flex flex-wrap gap-3 justify-center animate-fade-in w-full">
@@ -188,5 +241,16 @@
     </div>
   </div>
   }
+
+  @if (messages.length > 0 || (isLoading$ | async)) {
+  <div class="w-full flex flex-col items-center pb-4 backdrop-blur-md sticky bottom-0 z-30">
+    <div class="w-full max-w-4xl px-4">
+      <app-chat-input [isLoading]="(isLoading$ | async) ?? false" [isStreaming]="(isStreaming$ | async) ?? false"
+        (sendMessage)="handleSendMessage($event)" (stopGeneration)="handleStopGeneration()">
+      </app-chat-input>
+    </div>
+  </div>
+  }
+
 </div>
 }
