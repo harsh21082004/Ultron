@@ -21,7 +21,6 @@ pinecone-client
 groq
 mcp
 langgraph
-pywin32
 youtube-search
 youtube-transcript-api
 yt-dlp
