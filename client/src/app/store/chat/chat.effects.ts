@@ -91,10 +91,34 @@ export class ChatEffects {
                     return AuthActions.updateUserProfile({ data: payload });
                  } catch { return ChatApiActions.addStreamLog({ log: 'Failed to update settings.' }); }
              }
+
+             //Handle Icon update from stream
+              if (event.type === 'icon') {
+                  try {
+                    console.log(event.value)
+                      return ChatApiActions.updateAgentIcon({ icon: event.value });
+                  } catch {
+                      return ChatApiActions.addStreamLog({ log: 'Error parsing icon data' });
+                  }
+              }
+             // Handle Agent Name update from stream
+             if (event.type === 'agent_name') {
+                 // Assuming you have an action for this, otherwise we log it or ignore
+                 // Ideally: return ChatApiActions.updateActiveAgent({ agentName: event.value });
+                 // For now, returning status update to visualize it
+                 return ChatApiActions.updateStreamStatus({ status: `${event.value} is working...` });
+             }
+             if (event.type === 'skeleton'){
+              console.log('Skeleton event received:', event.value)
+                  try { return ChatApiActions.updateSkeleton({ skeleton: event.value }); }
+                  catch { return ChatApiActions.addStreamLog({ log: 'Error parsing skeleton data' }); }
+             }
+
              return ChatApiActions.receiveStreamChunk({ chunk: '' }); // Fallback
           }),
           takeUntil(this.actions$.pipe(ofType(ChatPageActions.stopStream))),
-          endWith(ChatApiActions.streamComplete({ chatId: action.chatId })),
+          // FIX: Added 'agentName' to satisfy the interface
+          endWith(ChatApiActions.streamComplete({ chatId: action.chatId, agentName: 'Ultron' })),
           catchError(error => of(ChatApiActions.streamFailure({ error: error.message })))
         );
       })

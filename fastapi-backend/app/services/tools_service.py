@@ -1,17 +1,11 @@
-from typing import List, Dict, Any
+import json
+from typing import Dict, Any, List
+from urllib.parse import urlparse
 from langchain_core.tools import Tool
 from langchain_google_community import GoogleSearchAPIWrapper
-from urllib.parse import urlparse
-import json
-
 from ..core.config import get_settings
 
 class ToolsService:
-    """
-    Manages Google Web Search Tool.
-    Returns structured data including sources with uri, icon, and citationIndices.
-    """
-
     def __init__(self):
         settings = get_settings()
         self._search_available = False
@@ -20,87 +14,76 @@ class ToolsService:
 
         if settings.GOOGLE_API_KEY and settings.GOOGLE_CSE_ID:
             try:
+                # Reduced k to 5 for speed and focus
                 self._search_wrapper = GoogleSearchAPIWrapper(
                     google_api_key=settings.GOOGLE_API_KEY,
-                    google_cse_id=settings.GOOGLE_CSE_ID
+                    google_cse_id=settings.GOOGLE_CSE_ID,
+                    k=5 
                 )
                 self._search_available = True
             except Exception as e:
-                self._error_msg = f"Google Search Init Failed: {e}"
+                self._error_msg = f"Init Failed: {e}"
         else:
-            self._error_msg = "Google Search keys missing (GOOGLE_API_KEY, GOOGLE_CSE_ID)."
+            self._error_msg = "Keys missing."
 
     def get_search_tool(self) -> Tool:
-        if not self._search_available:
-            return Tool(
-                name="web_search_disabled",
-                func=lambda q: self._error_msg,
-                description="Search unavailable.",
-            )
-
         return Tool(
             name="google_search",
-            func=self.perform_search_simple,
-            description="Use for real-time information from Google.",
+            func=self.perform_search_full,
+            description="Returns JSON with summary, sources, and found images.",
         )
 
-    def perform_search_simple(self, query: str) -> str:
-        """
-        Legacy simple search returning string only.
-        """
+    def perform_search_full(self, query: str) -> str:
+        print(f"Tool executing for: {query}") 
         result = self.perform_search(query)
-        return result["summary"]
+        # Ensure we return a STRING, not a dict
+        return json.dumps(result)
 
     def perform_search(self, query: str) -> Dict[str, Any]:
-        """
-        Performs a search and returns structured data:
-        {
-            "summary": "Combined snippets...",
-            "sources": [{"title": "...", "uri": "...", "icon": "...", "citationIndices": []}]
-        }
-        """
         if not self._search_available:
-            return {"summary": self._error_msg, "sources": []}
+            return {"summary": self._error_msg, "sources": [], "images": []}
         
         try:
-            # Get raw results (list of dicts with title, link, snippet)
-            raw_results = self._search_wrapper.results(query, num_results=4)
+            raw_results = self._search_wrapper.results(query, num_results=5)
             
-            if not raw_results:
-                return {"summary": "No results found.", "sources": []}
+            if not raw_results: 
+                return {"summary": "No results found on the web.", "sources": [], "images": []}
 
             sources = []
             snippets = []
+            found_images = []
 
-            for res in raw_results:
-                title = res.get("title", "Unknown Source")
+            for i, res in enumerate(raw_results):
+                title = res.get("title", "Unknown")
                 link = res.get("link", "#")
-                snippet = res.get("snippet", "")
+                snippet = res.get("snippet", "No description available.")
                 
-                # --- MANAGE THE REQUESTED FIELDS ---
-                
-                # 1. Generate Icon URL from domain
                 try:
                     domain = urlparse(link).netloc
                     icon_url = f"https://www.google.com/s2/favicons?domain={domain}"
-                except:
+                except: 
                     icon_url = ""
 
-                sources.append({
-                    "title": title,
-                    "uri": link,         # Renamed 'link' to 'uri'
-                    "icon": icon_url,    # Added icon
-                    "citationIndices": [] # Added default empty list
-                })
+                image_url = None
+                pagemap = res.get("pagemap", {})
+                if "cse_image" in pagemap and len(pagemap["cse_image"]) > 0:
+                    image_url = pagemap["cse_image"][0].get("src")
+                elif "og:image" in pagemap and len(pagemap["og:image"]) > 0:
+                    image_url = pagemap["og:image"][0].get("src")
 
-                snippets.append(f"Source: {title}\nContent: {snippet}")
+                sources.append({"title": title, "uri": link, "icon": icon_url, "citationIndices": []})
+                snippets.append(f"Source [{i+1}] {title}: {snippet}")
+                
+                if image_url and len(found_images) < 2:
+                    found_images.append({"url": image_url, "source_index": i+1, "alt": title})
 
-            summary = "\n\n".join(snippets)
-            
+            summary_text = "\n\n".join(snippets)
+            print(summary_text, sources, found_images)
+
             return {
-                "summary": summary,
-                "sources": sources
+                "summary": summary_text, 
+                "sources": sources, 
+                "images": found_images
             }
-
         except Exception as e:
-            return {"summary": f"Search Error: {e}", "sources": []}
+            return {"summary": f"Search Error: {e}", "sources": [], "images": []}

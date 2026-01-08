@@ -16,8 +16,16 @@ export class ChatDbService {
     return new HttpHeaders({ 'Authorization': `Bearer ${token}` });
   }
 
+  // This function sends the chat to the backend.
+  // The backend will detect Base64 images in 'messages', upload them to GCS,
+  // and swap them for URLs before saving to MongoDB.
   saveChat(chatId: string, messages: ChatMessage[], title: string, currentLeafId: string | null): Observable<any> {
     const payload = { chatId, messages, title, currentLeafId };
+
+    console.log('Saving chat with payload:', payload);
+    
+    // NOTE: This POST request might be large (due to Base64). 
+    // Ensure your Node.js body-parser limit is high enough (e.g., 50mb).
     return this.http.post(`${this.apiUrl}/save`, payload, { headers: this.getAuthHeaders() });
   }
 
@@ -27,6 +35,7 @@ export class ChatDbService {
     });
   }
 
+  // ... (Rest of your methods remain exactly the same) ...
   getAllChats(userId: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/get/all/${userId}`, { headers: this.getAuthHeaders() });
   }

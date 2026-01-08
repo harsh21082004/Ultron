@@ -1,32 +1,33 @@
 import json
 import asyncio
+import logging
+import re
 from functools import lru_cache
 from typing import List, AsyncGenerator
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage
-from langchain_core.runnables.history import RunnableWithMessageHistory
+# [CRITICAL FIX] Added ToolMessage to imports
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+from langchain_core.prompts.chat import ChatPromptTemplate
 
 from ..core.config import Settings, get_settings
 from ..models.chat_models import Message
 from ..core.llm_factory import get_llm_factory
-from .intent_service import IntentService
-from .tools_service import ToolsService
 from .vector_store_service import get_vector_store_service
-from .regulations import SafetyRegulations
 from .session_manager import SessionManager
+from ..core.agent_graph import AgentGraphFactory
+from ..services.image_service import ImageService
+from ..services.youtube_service import YoutubeService
+
+logger = logging.getLogger("uvicorn.error")
 
 class ChatService:
     def __init__(self, settings: Settings):
-        if not settings.GROQ_API_KEY:
-            raise ValueError("GROQ_API_KEY not found in settings.")
-            
         self.llm_factory = get_llm_factory()
-        self.intent_service = IntentService()
-        self.tools_service = ToolsService()
         self.vector_store = get_vector_store_service()
-        self.regulations = SafetyRegulations()
         self.session_manager = SessionManager()
+        self.agent_factory = AgentGraphFactory()
+        self.image_service = ImageService()
+        self.youtube_service = YoutubeService()
 
     async def get_chat_history(self, session_id: str) -> List[Message]:
         return []
@@ -38,166 +39,269 @@ class ChatService:
         self, 
         message: str, 
         session_id: str, 
-        images: List[str] = [], # UPDATED: Accepts list
+        images: List[str] = [],
         language: str = "English",
         user_context: dict = None
     ) -> AsyncGenerator[str, None]:
         
-        selected_model = None
-        system_prompt = ""
-        input_payload = None
-        is_vision_request = False
         full_ai_response = ""
-
-        user_message_content = message
-
-        # --- 1. VISION PATH (Multiple Images) ---
-        if images and len(images) > 0:
-            yield "__STATUS__:Analyzing Visual Content..."
-            
-            selected_model = self.llm_factory.get_vision_model()
-            system_prompt = self.regulations.get_vision_prompt(language, user_context)
-            is_vision_request = True
-            
-            # Start with the text prompt
-            content_list = [
-                {"type": "text", "text": user_message_content or "Analyze these images."}
-            ]
-            
-            # Append all images to the content block
-            for img_data in images:
-                content_list.append({
-                    "type": "image_url",
-                    "image_url": {"url": img_data}
-                })
-
-            input_payload = [HumanMessage(content=content_list)]
-
-        # --- 2. TEXT PATH ---
-        else:
-            yield "__STATUS__:Analyzing Request..."
-            
-            classification = await self.intent_service.classify_intent(message)
-            intent = classification["intent"]
-            dynamic_status = classification["status"]
-            pref_data = classification.get("pref_data")
-            detected_lang = classification.get("input_language", "English")
-
-            if detected_lang and detected_lang.lower() == "english":
-                language = "English"
-            elif detected_lang and detected_lang.lower() != language.lower():
-                language = detected_lang
-
-            yield f"__STATUS__:{dynamic_status}"
-
-            if intent == 'change_preference' and pref_data and pref_data.get('key') and pref_data.get('value'):
-                key = pref_data['key'].lower()
-                value = pref_data['value']
-                
-                if value and value.lower() != "none":
-                    yield f"__THOUGHT__: Changing setting '{key}' to '{value}'."
-                    payload = {key: value}
-                    yield f"__UPDATE_PREF__:{json.dumps(payload)}"
-                    
-                    if key == 'language': language = value
-                    
-                    selected_model = self.llm_factory.get_tooling_model()
-                    system_prompt = self.regulations.get_general_prompt(language, user_context)
-                    input_payload = f"Confirm setting '{key}' updated to '{value}' in {language}."
-                else:
-                    selected_model = self.llm_factory.get_tooling_model()
-                    system_prompt = self.regulations.get_general_prompt(language, user_context)
-                    input_payload = message
-
-            else:
-                if language != "English":
-                     yield f"__THOUGHT__: Intent '{intent.upper()}'. Responding in {language}."
-                else:
-                     yield f"__THOUGHT__: Intent '{intent.upper()}'."
-
-                rag_context = ""
-                try:
-                    rag_context = await self.vector_store.retrieve_context(message)
-                    if rag_context:
-                        yield "__THOUGHT__: Retrieved relevant memories."
-                except Exception as e:
-                    print(f"RAG Error: {e}") 
-
-                rag_instruction = ""
-                if rag_context:
-                    rag_instruction = (
-                        f"\n\n=== [HISTORICAL MEMORY START] ===\n"
-                        f"{rag_context}\n"
-                        f"=== [HISTORICAL MEMORY END] ===\n"
-                        f"SYSTEM NOTE: The memory above is for factual context ONLY. "
-                        f"Ignore its language style. Respond in {language}."
-                    )
-
-                if intent == 'search':
-                    yield f"__THOUGHT__: Searching web..."
-                    search_data = self.tools_service.perform_search(message)
-                    search_summary = search_data["summary"]
-                    sources = search_data["sources"]
-                    
-                    if sources:
-                        yield f"__SOURCES__:{json.dumps(sources)}"
-                    
-                    selected_model = self.llm_factory.get_tooling_model()
-                    system_prompt = self.regulations.get_search_prompt(language, user_context) + rag_instruction
-                    input_payload = f"User Question: {user_message_content}\n\n[Live Search Results]:\n{search_summary}\n\nAnswer:"
-
-                elif intent == 'reasoning':
-                    yield f"__THOUGHT__: Reasoning..."
-                    selected_model = self.llm_factory.get_reasoning_model()
-                    system_prompt = self.regulations.get_reasoning_prompt(language, user_context) + rag_instruction
-                    input_payload = user_message_content
-
-                else: # General
-                    selected_model = self.llm_factory.get_tooling_model()
-                    system_prompt = self.regulations.get_general_prompt(language, user_context) + rag_instruction
-                    input_payload = user_message_content
-
-        # --- 3. EXECUTION PHASE ---
         
-        if is_vision_request:
-            prompt_template = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="chat_history"),
-                MessagesPlaceholder(variable_name="input"),
-            ])
-        else:
-            prompt_template = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="chat_history"),
-                ("human", "{input}"),
-            ])
+        # Context Prep
+        aspect_ratio = "16:9"
+        if user_context and 'screenWidth' in user_context:
+            w = user_context.get('screenWidth', 1920)
+            h = user_context.get('screenHeight', 1080)
+            if h > w: aspect_ratio = "9:16"
+        
+        user_info_str = ""
+        if user_context:
+            name = user_context.get('name', 'User')
+            prefs = user_context.get('preferences', {})
+            user_info_str = f"User Name: {name}. User Preferences: {json.dumps(prefs)}."
 
-        chain = RunnableWithMessageHistory(
-            prompt_template | selected_model,
-            self.session_manager.get_session_history,
-            input_messages_key="input",
-            history_messages_key="chat_history",
-        )
-
-        config = {"configurable": {"session_id": session_id}}
-
-        yield "__ANSWER__:" 
-
-        try:
-            async for chunk in chain.astream({"input": input_payload}, config=config):
-                if chunk.content:
-                    text_chunk = chunk.content
-                    full_ai_response += text_chunk
-                    yield text_chunk
+        # 1. Vision Path
+        if images and len(images) > 0 and (not message or len(message) < 50):
+            yield "__STATUS__:Analyzing Visual Content..."
+            yield "__ICON__:image"
+            vision_model = self.llm_factory.get_vision_model()
+            content_list = [{"type": "text", "text": message or "Analyze this image in detail."}]
+            for img in images:
+                content_list.append({"type": "image_url", "image_url": {"url": img}})
             
-            # Save memory (skip for vision to keep vector store strictly text-based for now)
-            if full_ai_response and len(full_ai_response) > 20 and not is_vision_request:
-                memory_text = f"User ({language}): {message}\nUltron ({language}): {full_ai_response}"
-                asyncio.create_task(self.vector_store.add_documents([memory_text]))
+            user_msg = HumanMessage(content=content_list)
+            yield "__ANSWER__:" 
+            async for chunk in vision_model.astream([user_msg]):
+                if chunk.content:
+                    full_ai_response += chunk.content
+                    yield chunk.content
+            return
+
+        # 2. Agent Path
+        yield "__STATUS__:Orchestrating Agents..."
+        yield "__ICON__:logo"
+        
+        try:
+            graph = await self.agent_factory.create_graph()
+            history = self.session_manager.get_session_history(session_id)
+            
+            # [FIX] SystemMessage is now correctly imported
+            system_msg = SystemMessage(content=(
+                f"User Language: {language}. {user_info_str}\n"
+                "RULES: 1. Summarize search results. 2. Cite sources [1]. 3. Use provided web images if valid."
+            ))
+            
+            if images and len(images) > 0:
+                content_list = [{"type": "text", "text": message or "Analyze this image."}]
+                for img in images: content_list.append({"type": "image_url", "image_url": {"url": img}})
+                user_msg = HumanMessage(content=content_list)
+            else:
+                user_msg = HumanMessage(content=message)
+
+            current_messages = [system_msg] + history.messages + [user_msg]
+            
+            # --- STRICT STATE MACHINE VARIABLES ---
+            is_answering = False  # Have we sent the __ANSWER__ tag yet?
+            buffer = ""
+            thought_tag = "THOUGHT:"
+            pending_image_prompt = None
+            is_thought_mode = True # Start expecting a thought
+
+            async for event in graph.astream_events({"messages": current_messages}, version="v1"):
+                kind = event["event"]
+                metadata = event.get("metadata") or {} 
+                node_name = metadata.get("langgraph_node", "")
+                name = event.get("name", "")
+
+                # A. Supervisor Logic
+                if kind == "on_chat_model_stream" and node_name == "supervisor":
+                    pass
+
+                # B. Agent Status & Icons
+                elif kind == "on_chain_start" and node_name in ["researcher", "coder", "artist", "visionary", "general"]:
+                    agent_display = node_name.capitalize()
+                    yield f"__AGENT__:{agent_display}"
+                    yield f"__STATUS__:{agent_display} is working..."
+                    
+                    if node_name == "coder": yield "__ICON__:code"
+                    elif node_name == "artist": yield "__ICON__:image"
+                    elif node_name == "researcher": yield "__ICON__:logo"
+                    
+                    if node_name == "artist": yield "__SKELETON_START__:"
+
+                # C. Tool Execution Icons
+                elif kind == "on_tool_start":
+                    if name in ["search_youtube", "get_video_transcript", "get_video_details"]:
+                        yield "__ICON__:youtube"
+                        yield "__STATUS__:Accessing YouTube..."
+                    elif name == "google_search":
+                        yield "__ICON__:google"
+                        yield "__STATUS__:Searching Google..."
+                    elif name == "generate_image":
+                        yield "__ICON__:image"
+                        yield "__STATUS__:Generating Image..."
+                        yield "__SKELETON_START__:"
+
+                elif kind == "on_tool_end" and name == "generate_image":
+                     yield "__SKELETON_END__:"
+                     image_markdown = event["data"].get("output", "")
+                     if "data:image" in image_markdown:
+                         if not is_answering:
+                             yield "__ANSWER__:"
+                             is_answering = True
+                         yield f"\n{image_markdown}\n"
+                         full_ai_response += image_markdown
+
+                # D. Researcher Output (Log Thoughts & Sources)
+                elif kind == "on_chain_end" and node_name == "researcher":
+                    try:
+                        output_data = event["data"].get("output")
+                        # Handle ToolMessages in history
+                        if output_data and isinstance(output_data, dict) and "messages" in output_data:
+                            for m in output_data["messages"]:
+                                # [FIX] ToolMessage imported correctly now
+                                if isinstance(m, ToolMessage):
+                                    content = m.content
+                                    # Extract JSON sources if present
+                                    if "sources" in content:
+                                        # Regex to find JSON array even if surrounded by text
+                                        match = re.search(r'\[\s*\{.*?"sources".*\}\s*\]', content, re.DOTALL) 
+                                        if match:
+                                            # It's already json array? No, usually search returns list of dicts or a dict
+                                            pass
+                                        
+                                        # Standard retrieval
+                                        if isinstance(content, str) and "sources" in content:
+                                            # Try to parse the whole thing or find the JSON part
+                                            try:
+                                                start = content.find("{")
+                                                if start != -1:
+                                                    parsed = json.loads(content[start:])
+                                                    if "sources" in parsed:
+                                                        yield f"__SOURCES__:{json.dumps(parsed['sources'])}"
+                                            except: pass
+                                
+                                # Check for AIMessage thoughts
+                                if isinstance(m, AIMessage):
+                                    if "THOUGHT:" in m.content:
+                                        thought_text = m.content.split("THOUGHT:")[1].split("\n")[0].strip()
+                                        yield f"__THOUGHT__:{thought_text}"
+                    except Exception as e:
+                        logger.error(f"Error parsing Researcher output: {e}")
+
+                # E. Artist Output
+                elif kind == "on_chain_end" and node_name == "artist":
+                    yield "__SKELETON_END__:"
+                    try:
+                        output = event["data"].get("output")
+                        if output:
+                            content = output["messages"][-1].content
+                            if "THOUGHT:" in content:
+                                parts = content.split("THOUGHT:")
+                                if len(parts) > 1:
+                                    thought_part = parts[1].split("\n")[0].strip()
+                                    yield f"__THOUGHT__:{thought_part}"
+                                    rest = content.replace(f"THOUGHT: {thought_part}", "").replace("THOUGHT:", "").strip()
+                                    if rest:
+                                        if not is_answering:
+                                            yield "__ANSWER__:"
+                                            is_answering = True
+                                        yield f"\n{rest}\n"
+                                        full_ai_response += rest
+                    except: pass
+
+                # F. GENERAL ANSWER STREAMING
+                elif kind == "on_chat_model_stream" and node_name != "supervisor":
+                    chunk = event["data"]["chunk"]
+                    if chunk.content:
+                        text_chunk = chunk.content
+                        full_ai_response += text_chunk
+                        buffer += text_chunk
+
+                        # --- STATE MACHINE ---
+                        if is_answering:
+                            # 1. ANSWER MODE: Stream text, hide Image Tags
+                            if "[[" in buffer:
+                                if "]]" in buffer:
+                                    match = re.search(r'\[\[GENERATE_IMAGE:\s*(.*?)\]\]', buffer)
+                                    if match:
+                                        pending_image_prompt = match.group(1)
+                                        buffer = buffer.replace(match.group(0), "")
+                                    yield buffer
+                                    buffer = ""
+                            else:
+                                yield buffer
+                                buffer = ""
+                        else:
+                            # 2. THOUGHT MODE: Wait for THOUGHT: line to finish
+                            clean_buffer = buffer.lstrip()
+                            
+                            # Check if it *could* be a thought
+                            if thought_tag.startswith(clean_buffer) or clean_buffer.startswith(thought_tag):
+                                # If we have the full tag "THOUGHT:"
+                                if clean_buffer.startswith(thought_tag):
+                                    if "\n" in buffer:
+                                        # Found end of thought line
+                                        split_idx = buffer.find("\n") + 1
+                                        thought_line = buffer[:split_idx].strip()
+                                        remaining = buffer[split_idx:]
+                                        
+                                        # Emit Thought
+                                        clean_thought = thought_line.replace(thought_tag, "").strip()
+                                        yield f"__THOUGHT__:{clean_thought}"
+                                        
+                                        # Switch to Answer
+                                        yield "__ANSWER__:"
+                                        is_answering = True
+                                        buffer = remaining # Process remainder in next loop or flush
+                                        
+                                        # If text remains, flush it immediately
+                                        if buffer.strip():
+                                            yield buffer
+                                            buffer = ""
+                                    # Else wait for newline
+                                else:
+                                    # Buffer is shorter than "THOUGHT:", wait for more data
+                                    if len(clean_buffer) > len(thought_tag):
+                                         # Started with "T..." but mismatch. Answer.
+                                         yield "__ANSWER__:"
+                                         is_answering = True
+                                         yield buffer
+                                         buffer = ""
+                            else:
+                                # Not a thought. Answer immediately.
+                                yield "__ANSWER__:"
+                                is_answering = True
+                                yield buffer
+                                buffer = ""
+
+            # --- END OF STREAM ---
+            if buffer:
+                if not is_answering:
+                    yield "__ANSWER__:"
+                yield buffer
+
+            # Post-Process Image
+            if pending_image_prompt:
+                yield "__ICON__:image"
+                yield f"__THOUGHT__: Generating visual: {pending_image_prompt}"
+                yield "__SKELETON_START__:"
+                img_markdown = await self.image_service.generate_image(pending_image_prompt, aspect_ratio=aspect_ratio)
+                yield "__SKELETON_END__:"
+                yield f"\n{img_markdown}\n"
                 
+                clean_tag = f"[[GENERATE_IMAGE: {pending_image_prompt}]]"
+                full_ai_response = full_ai_response.replace(clean_tag, img_markdown)
+
+            # Save Memory
+            if full_ai_response.strip() and len(full_ai_response) > 20:
+                clean_memory = re.sub(r'!\[.*?\]\(data:image\/[^)]+\)', '[Generated Image]', full_ai_response)
+                clean_memory = re.sub(r'\[\[GENERATE_IMAGE:.*?\]\]', '', clean_memory)
+                asyncio.create_task(self.vector_store.add_documents([f"User: {message}\nUltron: {clean_memory}"]))
+
         except Exception as e:
-            print(f"Streaming Error: {e}")
-            yield f"[System Error: {str(e)}]"
+            logger.error(f"Graph Error: {e}")
+            yield "__ANSWER__:" 
+            yield f"\n[System Error]: {str(e)}"
 
     async def generate_chat_title(self, messages: List[Message]) -> str:
         try:
@@ -212,13 +316,13 @@ class ChatService:
 
             model = self.llm_factory.get_tooling_model()
             title_prompt = ChatPromptTemplate.from_messages([
-                ("system", "Generate a 3-5 word title for this chat. No quotes."),
+                ("system", "Generate a 3-5 word title for this chat, max words should be 10. No quotes."),
                 ("user", "{context}")
             ])
             
             chain = title_prompt | model
             response = await chain.ainvoke({"context": conversation_summary})
-            return response.content.strip().replace('"', '')
+            return response.content[:100].strip().replace('"', '')
         except Exception as e:
             print(f"Error generating title: {e}")
             return "New Chat"

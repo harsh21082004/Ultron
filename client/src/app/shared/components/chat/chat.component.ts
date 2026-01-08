@@ -1,12 +1,12 @@
-import { 
-  Component, ElementRef, ViewChild, ChangeDetectionStrategy, inject, OnInit, OnDestroy, AfterViewInit, 
+import {
+  Component, ElementRef, ViewChild, ChangeDetectionStrategy, inject, OnInit, OnDestroy, AfterViewInit,
   ViewChildren, QueryList, HostListener, computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms'; 
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable, Subscription, lastValueFrom, withLatestFrom, take } from 'rxjs'; 
+import { Observable, Subscription, lastValueFrom, withLatestFrom, take } from 'rxjs';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -18,7 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { AppState } from '../../../store';
 import { ChatSelectors } from '../../../store/chat/chat.selectors';
 import { ChatPageActions, ChatApiActions } from '../../../store/chat/chat.actions';
-import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state'; 
+import { ChatMessage, StreamStatus } from '../../../store/chat/chat.state';
 import { selectAuthUser } from '../../../store/auth/auth.selectors';
 import { User } from '../../models/user.model';
 import { ClipboardService } from '../../../core/services/clipboard.service';
@@ -32,7 +32,8 @@ import { ChatEmptyStateComponent } from '../../components/chat-empty-state/chat-
 import { ContentRendererComponent } from '../content-renderer/content-renderer.component';
 import { HeaderComponent } from '../header/header.component';
 import { UltronLoaderComponent } from '../ultron-loader/ultron-loader.component';
-import { AutoGrowDirective } from '../../directives/auto-grow.directive'; 
+import { AutoGrowDirective } from '../../directives/auto-grow.directive';
+import { ImageViewerComponent } from "../image-viewer/image-viewer";
 
 const PROMPT_SUGGESTIONS = [
   { title: "Smart Budget", description: "A budget that fits your lifestyle." },
@@ -46,13 +47,14 @@ const PROMPT_SUGGESTIONS = [
   selector: 'app-chat-component',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
+    CommonModule,
+    FormsModule,
     MatButtonModule, MatIconModule, MatTooltipModule, MatInputModule,
     HeaderComponent, ContentRendererComponent, UltronLoaderComponent,
     ChatInputComponent, ChatEmptyStateComponent,
-    AutoGrowDirective 
-  ],
+    AutoGrowDirective,
+    ImageViewerComponent
+],
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,30 +62,31 @@ const PROMPT_SUGGESTIONS = [
 export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
   @ViewChildren('messageElement') private messageElements!: QueryList<ElementRef>;
-  @ViewChild('chatContainer') private chatContainer!: ElementRef; 
+  @ViewChild('chatContainer') private chatContainer!: ElementRef;
   @ViewChild(ChatInputComponent) private chatInputComponent!: ChatInputComponent;
 
   public messages$: Observable<ChatMessage[]>;
   public isLoading$: Observable<boolean>;
   public isStreaming$: Observable<boolean>;
-  public streamStatus$: Observable<StreamStatus | null>; 
+  public streamStatus$: Observable<StreamStatus | null>;
   public user$: Observable<User | null>;
-  
+
   public isSharedChatView = false;
   public promptSuggestions = PROMPT_SUGGESTIONS;
   public isMobileView = false;
-  
-  private isInitialLoad = true; 
+  public previewImageUrl: string | null = null;
+
+  private isInitialLoad = true;
 
   // --- INLINE EDITING STATE ---
-  public editingMessageId: string | null = null; 
-  public editContent: string = ''; 
+  public editingMessageId: string | null = null;
+  public editContent: string = '';
 
   private store = inject(Store<AppState>);
   private route = inject(ActivatedRoute);
-  private router = inject(Router); 
+  private router = inject(Router);
   private clipboard = inject(ClipboardService);
-  private audioService = inject(AudioApiService); 
+  private audioService = inject(AudioApiService);
   private fileUploadService = inject(FileUploadService);
   public themeService = inject(ThemeService);
 
@@ -97,6 +100,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.streamStatus$ = this.store.select(ChatSelectors.selectStreamStatus);
     this.user$ = this.store.select(selectAuthUser);
     this.updateIsMobileView();
+
+    this.messages$.subscribe(msgs => { console.log("Visible Messages Updated:", msgs); });
   }
 
   @HostListener('window:resize') onResize() { this.updateIsMobileView(); }
@@ -109,7 +114,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       const urlChatId = params.get('id');
       const routeShareId = params.get('shareId');
       this.isInitialLoad = true;
-      this.cancelEdit(); 
+      this.cancelEdit();
+
+      console.log("Route params changed:", { urlChatId, routeShareId, currentLoadedChatId, currentShareId })
 
       if (routeShareId) {
         this.isSharedChatView = true;
@@ -124,6 +131,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
         if (currentShareId) this.store.dispatch(ChatPageActions.clearShareState());
         this.store.dispatch(ChatPageActions.clearActiveChat());
       }
+
+      console.log(this.isSharedChatView)
     });
   }
 
@@ -131,20 +140,28 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.messagesSub = this.messageElements.changes.subscribe(() => {
       if (this.isInitialLoad && this.messageElements.length > 0) {
         this.scrollToBottom();
-        this.isInitialLoad = false; 
+        this.isInitialLoad = false;
       }
     });
   }
 
   ngOnDestroy(): void { this.routeSub?.unsubscribe(); this.messagesSub?.unsubscribe(); }
-  
+
   public trackByMessage(_index: number, message: ChatMessage): string { return message._id; }
-  
-  public hasTextBlock(message: ChatMessage): boolean { 
-      return message.content.some(block => block.type === 'text' && block.value.trim().length > 0); 
+
+  public hasTextBlock(message: ChatMessage): boolean {
+    return message.content.some(block => block.type === 'text' && block.value.trim().length > 0);
   }
   public hasImages(message: ChatMessage): boolean {
-      return message.content.some(block => block.type === 'image_url');
+    return message.content.some(block => block.type === 'image_url');
+  }
+
+  public openImagePreview(url: string): void {
+    this.previewImageUrl = url;
+  }
+
+  public closeImagePreview(): void {
+    this.previewImageUrl = null;
   }
 
   // --- EDIT ACTIONS ---
@@ -164,11 +181,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Attach to the SAME parent as the original message to create a Sibling/Branch
     this.processNewMessage(
-        this.editContent, 
-        originalMessage.parentMessageId, 
-        [] 
+      this.editContent,
+      originalMessage.parentMessageId,
+      []
     );
-    
+
     this.cancelEdit();
   }
 
@@ -194,42 +211,42 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       } catch (error) { console.error("Error processing files:", error); return; }
     }
-    
+
     // Normal send: parentId is undefined (auto-detected as leaf)
     this.processNewMessage(messageText, undefined, attachments, base64Files);
     setTimeout(() => this.scrollToLatestUserMessage(), 150);
   }
 
   private processNewMessage(
-      message: string, 
-      forcedParentId?: string | null, 
-      attachments: any[] = [], 
-      base64Files: string[] = []
+    message: string,
+    forcedParentId?: string | null,
+    attachments: any[] = [],
+    base64Files: string[] = []
   ): void {
     let currentChatId = this.route.snapshot.paramMap.get('id');
     const newId = crypto.randomUUID();
-    
+
     this.store.select(ChatSelectors.selectChatState).pipe(take(1)).subscribe(state => {
-        let parentId = forcedParentId;
+      let parentId = forcedParentId;
 
-        // If not forced (Normal Send from bottom bar), use current leaf
-        if (parentId === undefined) {
-            parentId = state.currentLeafId;
-            // Fallback for empty state or legacy data
-            if (!parentId && state.messages.length > 0) {
-                parentId = state.messages[state.messages.length - 1]._id;
-            }
+      // If not forced (Normal Send from bottom bar), use current leaf
+      if (parentId === undefined) {
+        parentId = state.currentLeafId;
+        // Fallback for empty state or legacy data
+        if (!parentId && state.messages.length > 0) {
+          parentId = state.messages[state.messages.length - 1]._id;
         }
+      }
 
-        const payload = { 
-          message: message.trim(), 
-          chatId: currentChatId || newId,
-          parentMessageId: parentId, 
-          attachments,
-          base64Files
-        };
-        this.store.dispatch(ChatPageActions.sendMessage(payload));
-        if (!currentChatId) this.router.navigate(['/chat', newId]);
+      const payload = {
+        message: message.trim(),
+        chatId: currentChatId || newId,
+        parentMessageId: parentId,
+        attachments,
+        base64Files
+      };
+      this.store.dispatch(ChatPageActions.sendMessage(payload));
+      if (!currentChatId) this.router.navigate(['/chat', newId]);
     });
   }
 
@@ -252,45 +269,45 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   // --- NAVIGATION & TREE LOGIC ---
 
   public getSiblingInfo(message: ChatMessage): Observable<any> {
-      return this.store.select(ChatSelectors.selectMessageSiblings(message._id));
+    return this.store.select(ChatSelectors.selectMessageSiblings(message._id));
   }
 
   public switchVersion(message: ChatMessage, direction: number): void {
-      this.store.select(ChatSelectors.selectMessages).pipe(take(1)).subscribe(allMsgs => {
-          let siblings: string[] = [];
-          
-          if (!message.parentMessageId) {
-              // Root message case
-              siblings = allMsgs.filter(m => m.parentMessageId === null && m.sender === message.sender).map(m => m._id);
-          } else {
-              // Standard message case
-              const parent = allMsgs.find(m => m._id === message.parentMessageId);
-              if (parent) siblings = parent.childrenIds;
-          }
+    this.store.select(ChatSelectors.selectMessages).pipe(take(1)).subscribe(allMsgs => {
+      let siblings: string[] = [];
 
-          if (siblings.length > 1) {
-              const currentIndex = siblings.indexOf(message._id);
-              const newIndex = currentIndex + direction;
-              if (newIndex >= 0 && newIndex < siblings.length) {
-                  const siblingId = siblings[newIndex];
-                  const newLeaf = this.findLeaf(allMsgs, siblingId);
-                  this.store.dispatch(ChatPageActions.setCurrentLeaf({ leafId: newLeaf }));
-              }
-          }
-      });
+      if (!message.parentMessageId) {
+        // Root message case
+        siblings = allMsgs.filter(m => m.parentMessageId === null && m.sender === message.sender).map(m => m._id);
+      } else {
+        // Standard message case
+        const parent = allMsgs.find(m => m._id === message.parentMessageId);
+        if (parent) siblings = parent.childrenIds;
+      }
+
+      if (siblings.length > 1) {
+        const currentIndex = siblings.indexOf(message._id);
+        const newIndex = currentIndex + direction;
+        if (newIndex >= 0 && newIndex < siblings.length) {
+          const siblingId = siblings[newIndex];
+          const newLeaf = this.findLeaf(allMsgs, siblingId);
+          this.store.dispatch(ChatPageActions.setCurrentLeaf({ leafId: newLeaf }));
+        }
+      }
+    });
   }
 
   private findLeaf(messages: ChatMessage[], startId: string): string {
-      let currentId = startId;
-      let safety = 0;
-      while(safety < 10000) {
-          const node = messages.find(m => m._id === currentId);
-          if (node && node.childrenIds.length > 0) {
-              currentId = node.childrenIds[node.childrenIds.length - 1]; 
-          } else { return currentId; }
-          safety++;
-      }
-      return currentId;
+    let currentId = startId;
+    let safety = 0;
+    while (safety < 10000) {
+      const node = messages.find(m => m._id === currentId);
+      if (node && node.childrenIds.length > 0) {
+        currentId = node.childrenIds[node.childrenIds.length - 1];
+      } else { return currentId; }
+      safety++;
+    }
+    return currentId;
   }
 
   // --- HELPERS ---
@@ -298,7 +315,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
   private getTextFromMessage(message: ChatMessage): string | null {
     return message.content.filter(b => b.type !== 'image_url' && b.type !== 'image').map(b => b.value).join('\n');
   }
-  
+
   private fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -307,24 +324,24 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewInit {
       reader.onerror = error => reject(error);
     });
   }
-  
-  private scrollToBottom() { 
-    setTimeout(() => { 
-        if(this.chatContainer) {
-            this.chatContainer.nativeElement.scrollTo({ top: this.chatContainer.nativeElement.scrollHeight, behavior: 'instant' }); 
-        }
-    }, 100); 
+
+  private scrollToBottom() {
+    setTimeout(() => {
+      if (this.chatContainer) {
+        this.chatContainer.nativeElement.scrollTo({ top: this.chatContainer.nativeElement.scrollHeight, behavior: 'instant' });
+      }
+    }, 100);
   }
 
-  private scrollToLatestUserMessage() { 
-    try { 
-        const elements = this.messageElements.toArray(); 
-        if (elements.length > 0) { 
-            const userMsgIndex = elements.length >= 2 ? elements.length - 2 : elements.length - 1; 
-            elements[userMsgIndex]?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
-        } 
-    } catch (err) { console.warn("Scroll failed:", err); } 
+  private scrollToLatestUserMessage() {
+    try {
+      const elements = this.messageElements.toArray();
+      if (elements.length > 0) {
+        const userMsgIndex = elements.length >= 2 ? elements.length - 2 : elements.length - 1;
+        elements[userMsgIndex]?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (err) { console.warn("Scroll failed:", err); }
   }
-  
+
   isDarkMode = computed(() => this.themeService.currentTheme() === 'dark');
 }

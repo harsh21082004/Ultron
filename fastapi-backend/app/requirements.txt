@@ -12,9 +12,16 @@ langchain-community
 langchain-google-genai
 langchain-google-community
 google-generativeai
+google-genai
 google-api-python-client
 duckduckgo-search>=5.0.0
 Pillow
 langchain-pinecone
 pinecone-client
 groq
+mcp
+langgraph
+pywin32
+youtube-search
+youtube-transcript-api
+yt-dlp

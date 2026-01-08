@@ -24,12 +24,15 @@ export const ChatSelectors = {
   selectShareUrl: createSelector(selectChatState, (state) => state.shareUrl),
   selectShareId: createSelector(selectChatState, (state) => state.shareId),
   selectIsSharing: createSelector(selectChatState, (state) => state.isSharing),
+  selectCurrentAgentName: createSelector(selectChatState, (state) => state.currentAgentName),
+  selectCurrentAgentIcon: createSelector(selectChatState, (state) => state.currentAgentIcon),
 
   selectCurrentChat: createSelector(
     selectAllChatsState, selectCurrentChatIdState,
     (chats, currentChatId) => chats.find(chat => chat._id === currentChatId)
   ),
 
+  // --- TRAVERSAL ALGORITHM (Leaf -> Root) ---
   selectVisibleThread: createSelector(
     selectMessagesState,
     selectCurrentLeafIdState,
@@ -40,6 +43,7 @@ export const ChatSelectors = {
         messages.forEach(m => msgMap.set(m._id, m));
 
         let currentId = leafId;
+        // Fallback to last message if no leaf ID is set
         if (!currentId) {
              currentId = messages[messages.length - 1]._id;
         }
@@ -67,7 +71,6 @@ export const ChatSelectors = {
 
         // CASE 1: ROOT MESSAGE (No Parent)
         if (msg.parentMessageId === null) {
-            // Find all other messages that are also roots
             const rootSiblings = messages
                 .filter(m => m.parentMessageId === null && m.sender === msg.sender)
                 .map(m => m._id);

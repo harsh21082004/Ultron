@@ -44,4 +44,43 @@ const uploadFilesToGCS = async (files, folder = 'uploads') => {
   return await Promise.all(uploadPromises);
 };
 
-module.exports = { uploadFilesToGCS };
+const uploadBase64ToGCS = (base64String, folder = 'generated-images') => {
+  return new Promise((resolve, reject) => {
+    try {
+      // 1. Extract Mime Type and Buffer
+      // Format: "data:image/jpeg;base64,/9j/4AAQSk..."
+      const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      console.log('Base64 upload matches:', matches);
+      
+      if (!matches || matches.length !== 3) {
+        return reject(new Error('Invalid base64 string'));
+      }
+
+      const mimeType = matches[1];
+      const buffer = Buffer.from(matches[2], 'base64');
+      const extension = mimeType.split('/')[1]; // e.g., 'jpeg'
+      const fileName = `${folder}/${uuidv4()}.${extension}`;
+
+      // 2. Upload to Bucket
+      const blob = bucket.file(fileName);
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+        contentType: mimeType,
+      });
+
+      blobStream.on('error', (err) => reject(err));
+
+      blobStream.on('finish', () => {
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+        resolve(publicUrl);
+      });
+
+      blobStream.end(buffer);
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+module.exports = { uploadFilesToGCS, uploadBase64ToGCS };

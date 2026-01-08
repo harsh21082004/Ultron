@@ -1,14 +1,15 @@
 import time
-import os
+import logging
 from functools import lru_cache
 from typing import List
 
-# Use Google GenAI for Embeddings (Free Tier)
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 
 from ..core.config import Settings, get_settings
+
+logger = logging.getLogger("uvicorn.error")
 
 class VectorStoreService:
     """
@@ -21,44 +22,44 @@ class VectorStoreService:
         
         self.pinecone_api_key = settings.PINECONE_API_KEY
         if not self.pinecone_api_key:
-            print("WARNING: PINECONE_API_KEY not found. RAG will be disabled.")
+            logger.warning("WARNING: PINECONE_API_KEY not found. RAG will be disabled.")
             return
 
         # 1. Initialize Google Embeddings
-        google_key = settings.GOOGLE_API_KEY
-        if google_key:
+        if settings.GOOGLE_API_KEY:
             try:
                 self.embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/text-embedding-004", 
-                    google_api_key=google_key
+                    google_api_key=settings.GOOGLE_API_KEY
                 )
             except Exception as e:
-                print(f"Failed to init Google Embeddings: {e}")
+                logger.error(f"Failed to init Google Embeddings: {e}")
                 return
         else:
-            print("ERROR: GOOGLE_API_KEY not found. Cannot initialize Embeddings.")
+            logger.error("ERROR: GOOGLE_API_KEY not found. Cannot initialize Embeddings.")
             return
 
         # 2. Initialize Pinecone
-        self.pc = Pinecone(api_key=self.pinecone_api_key)
-        self.index_name = settings.PINECONE_INDEX_NAME
-
-        # 3. Auto-Create Index with Correct Dimension (768)
         try:
+            self.pc = Pinecone(api_key=self.pinecone_api_key)
+            self.index_name = settings.PINECONE_INDEX_NAME
+
+            # 3. Auto-Create/Validate Index
             indexes = [i.name for i in self.pc.list_indexes()]
             
-            # If index exists but has wrong dimension (e.g. old OpenAI 1536), delete it
+            # Delete if dimension mismatch (e.g. migrating from OpenAI 1536 to Gemini 768)
             if self.index_name in indexes:
                 info = self.pc.describe_index(self.index_name)
                 if int(info.dimension) != self.dimension:
-                    print(f"⚠️ Dimension mismatch ({info.dimension} != {self.dimension}). Recreating index...")
+                    logger.warning(f"⚠️ Dimension mismatch ({info.dimension} != {self.dimension}). Recreating index...")
                     self.pc.delete_index(self.index_name)
+                    while self.index_name in [i.name for i in self.pc.list_indexes()]:
+                        time.sleep(1)
                     indexes.remove(self.index_name)
-                    time.sleep(10)
 
             # Create if missing
             if self.index_name not in indexes:
-                print(f"Creating Index '{self.index_name}' (Dim: {self.dimension})...")
+                logger.info(f"Creating Index '{self.index_name}' (Dim: {self.dimension})...")
                 self.pc.create_index(
                     name=self.index_name,
                     dimension=self.dimension,
@@ -67,7 +68,7 @@ class VectorStoreService:
                 )
                 while not self.pc.describe_index(self.index_name).status['ready']:
                     time.sleep(1)
-                print("Index ready.")
+                logger.info("Index ready.")
 
             # 4. Connect
             self.vector_store = PineconeVectorStore(
@@ -75,21 +76,28 @@ class VectorStoreService:
                 embedding=self.embeddings,
                 pinecone_api_key=self.pinecone_api_key
             )
+            
         except Exception as e:
-            print(f"Pinecone Connection Error: {e}")
+            logger.error(f"Pinecone Connection Error: {e}")
 
     async def retrieve_context(self, query: str, k: int = 3) -> str:
+        """Retrieves relevant conversation history/facts."""
         if not self.vector_store: return ""
         try:
-            docs = self.vector_store.similarity_search(query, k=k)
+            # Using ainvoke if available in your langchain version, otherwise sync
+            docs = await self.vector_store.asimilarity_search(query, k=k)
             return "\n\n".join([d.page_content for d in docs])
         except Exception as e:
-            print(f"RAG Error: {e}")
+            logger.error(f"RAG Retrieval Error: {e}")
             return ""
 
     async def add_documents(self, texts: List[str]):
-        if self.vector_store:
-            self.vector_store.add_texts(texts)
+        """Adds text to the vector DB for long-term memory."""
+        if self.vector_store and texts:
+            try:
+                await self.vector_store.aadd_texts(texts)
+            except Exception as e:
+                logger.error(f"RAG Add Error: {e}")
 
 @lru_cache()
 def get_vector_store_service() -> VectorStoreService:

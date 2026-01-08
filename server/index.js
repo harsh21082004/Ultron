@@ -45,7 +45,8 @@ app.use('/api/py', createProxyMiddleware({
 }));
 
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Passport
 app.use(passport.initialize());

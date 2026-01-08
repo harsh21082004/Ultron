@@ -9,8 +9,9 @@ const environment = {
   apiUrl: '/api'
 };
 
+// 1. [UPDATE] Add 'icon' to valid types
 export interface StreamEvent {
-  type: 'text' | 'status' | 'log' | 'sources' | 'update_pref';
+  type: 'text' | 'status' | 'log' | 'sources' | 'update_pref' | 'agent_name' | 'skeleton' | 'icon';
   value: string;
 }
 
@@ -32,11 +33,23 @@ export class ChatApiService {
   sendMessageStream(
     message: string, 
     chatId: string, 
-    parentMessageId: string | null, // NEW param
+    parentMessageId: string | null, 
     images: string[] = [], 
     language: string = 'English',
     userContext?: any
   ): Observable<StreamEvent> {
+    
+    if (!userContext) {
+         userContext = {
+             screenWidth: window.innerWidth,
+             screenHeight: window.innerHeight,
+             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+         };
+    } else {
+         if (!userContext.screenWidth) userContext.screenWidth = window.innerWidth;
+         if (!userContext.screenHeight) userContext.screenHeight = window.innerHeight;
+    }
+
     return new Observable(subscriber => {
       const controller = new AbortController();
       const signal = controller.signal;
@@ -58,17 +71,51 @@ export class ChatApiService {
           const { value, done } = await reader.read();
           if (done) { subscriber.complete(); break; }
 
-          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__|__UPDATE_PREF__):)/).filter(Boolean);
+          // 2. [UPDATE] Added __ICON__ to the split regex
+          const parts = value.split(/(?=(?:__STATUS__|__THOUGHT__|__SOURCES__|__ANSWER__|__UPDATE_PREF__|__AGENT__|__SKELETON_START__|__SKELETON_END__|__ICON__):)/).filter(Boolean);
+
+          console.log(parts)
+
           for (const part of parts) {
             let processedPart = part;
-            if (part.startsWith('__STATUS__:')) { currentTag = 'status'; processedPart = part.replace('__STATUS__:', ''); }
+            
+            // --- One-off Events (No state change) ---
+            
+            // 3. [NEW] Handle Icon Event
+            if (part.startsWith('__ICON__:')) {
+                const iconName = part.replace('__ICON__:', '').trim();
+                subscriber.next({ type: 'icon', value: iconName });
+                continue; // Skip the rest, don't change currentTag
+            }
+            else if (part.startsWith('__AGENT__:')) {
+                const agentName = part.replace('__AGENT__:', '').trim();
+                subscriber.next({ type: 'agent_name', value: agentName });
+                continue; 
+            }
+            else if (part.startsWith('__SKELETON_START__:')) {
+                 subscriber.next({ type: 'skeleton', value: 'start' });
+                 continue;
+            }
+            else if (part.startsWith('__SKELETON_END__:')) {
+                 subscriber.next({ type: 'skeleton', value: 'end' });
+                 continue;
+            }
+            
+            // --- Stateful Tags (Change content mode) ---
+            else if (part.startsWith('__STATUS__:')) { currentTag = 'status'; processedPart = part.replace('__STATUS__:', ''); }
             else if (part.startsWith('__UPDATE_PREF__:')) { currentTag = 'update_pref'; processedPart = part.replace('__UPDATE_PREF__:', ''); }
             else if (part.startsWith('__THOUGHT__:')) { currentTag = 'log'; processedPart = part.replace('__THOUGHT__:', ''); }
             else if (part.startsWith('__SOURCES__:')) { currentTag = 'sources'; processedPart = part.replace('__SOURCES__:', ''); }
             else if (part.startsWith('__ANSWER__:')) { currentTag = 'text'; processedPart = part.replace('__ANSWER__:', ''); }
 
             const cleanValue = processedPart; 
-            if (cleanValue) subscriber.next({ type: currentTag as any, value: cleanValue });
+            
+            if (cleanValue && currentTag) {
+                if (currentTag === 'log' && cleanValue.includes('![Generated Image]')) {
+                    currentTag = 'text';
+                }
+                subscriber.next({ type: currentTag as any, value: cleanValue });
+            }
           }
         }
       }).catch(err => {

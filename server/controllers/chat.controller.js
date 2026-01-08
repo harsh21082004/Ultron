@@ -1,8 +1,8 @@
 const Chat = require('../models/Chat');
+const { processMessagesForSave } = require('../utils/chat-processor');
 
 const saveChat = async (req, res) => {
   try {
-    // FIX: Accept currentLeafId
     const { chatId, messages, title, currentLeafId } = req.body;
     const userId = req.user.id;
 
@@ -10,13 +10,18 @@ const saveChat = async (req, res) => {
       return res.status(400).json({ message: 'Missing required chat data.' });
     }
 
+    // --- STEP 1: Process Images (Base64 -> GCS URL) ---
+    // This mutates the message array to replace heavy strings with URLs
+    const cleanMessages = await processMessagesForSave(messages, userId);
+
+    // --- STEP 2: Save to MongoDB ---
     const updatedChat = await Chat.findOneAndUpdate(
       { _id: chatId, userId: userId },
       { 
         $set: { 
-          messages: messages,
+          messages: cleanMessages, // Save the cleaned messages
           title: title,
-          currentLeafId: currentLeafId // Save the active branch state
+          currentLeafId: currentLeafId 
         },
         $setOnInsert: { _id: chatId, userId: userId }
       },

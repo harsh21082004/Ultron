@@ -32,7 +32,7 @@ export const ChatPageActions = createActionGroup({
     'Share Chat': props<{ chatId: string }>(),
     'Load Shared Chat': props<{ shareId: string }>(),
     'Save Shared Conversation': props<{ shareId: string }>(),
-    'Clear Share State': emptyProps()
+    'Clear Share State': emptyProps(),
   }
 });
 
@@ -43,13 +43,18 @@ export const ChatApiActions = createActionGroup({
     'Load Chat History Success': props<{ chatId: string, messages: ChatMessage[], currentLeafId: string | null }>(),
     'Load Chat History Failure': props<{ chatId: string, error: string }>(),
     
+    
     'Stream Started': emptyProps(),
     'Update Stream Status': props<{ status: string }>(),
     'Add Stream Log': props<{ log: string }>(),
     'Update Stream Sources': props<{ sources: Source[] }>(),
     'Receive Stream Chunk': props<{ chunk: string }>(),
-    'Stream Complete': props<{ chatId: string }>(),
+    'Stream Complete': props<{ chatId: string, agentName: string }>(),
     'Stream Failure': props<{ error: string }>(),
+    'Update Active Agent': props<{ agentName: string }>(),
+    'Update Skeleton': props<{ skeleton: string }>(),
+    'Update Agent Icon': props<{ icon: string }>(),
+
 
     'Save Chat History Success': props<{ chatId: string, newTitle: string }>(),
     'Save Chat History Failure': props<{ error: string }>(),
